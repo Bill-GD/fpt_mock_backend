@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -10,4 +5,128 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+model Teacher {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  name      String
+  role      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  exams     Exam[]
+  sections  Section[]
+
+  @@map("teachers")
+}
+
+model Exam {
+  id          Int        @id @default(autoincrement())
+  teacher     Teacher    @relation(fields: [teacherId], references: [id])
+  teacherId   Int        @map("teacher_id")
+  title       String
+  description String
+  isPublic    Boolean    @map("is_public")
+  questions   Question[]
+  sections    Section[]
+
+  @@map("exams")
+}
+
+model Question {
+  id             Int             @id @default(autoincrement())
+  exam           Exam            @relation(fields: [examId], references: [id])
+  examId         Int             @map("exam_id")
+  // context
+  options        Json
+  // correctAnswer  @map("correct_answer")
+  studentAnswers StudentAnswer[]
+
+  @@map("questions")
+}
+
+model Section {
+  id               Int               @id @default(autoincrement())
+  exam             Exam              @relation(fields: [examId], references: [id])
+  examId           Int               @map("exam_id")
+  host             Teacher           @relation(fields: [hostId], references: [id])
+  hostId           Int               @map("host_id")
+  // pinCode  @map("pin_code")
+  status           SectionStatus
+  startedAt        DateTime          @map("started_at")
+  leaderboard      Leaderboard?
+  roomParticipants RoomParticipant[]
+  studentAnswers   StudentAnswer[]
+
+  @@map("section")
+}
+
+model Student {
+  id               Int               @id @default(autoincrement())
+  type             StudentType
+  email            String
+  password         String            @db.Char(60)
+  name             String
+  createdAt        DateTime          @default(now()) @map("created_at")
+  leaderboards     Leaderboard[]
+  roomParticipants RoomParticipant[]
+  answers          StudentAnswer[]
+
+  @@map("students")
+}
+
+model Leaderboard {
+  id           Int     @id @default(autoincrement())
+  section      Section @relation(fields: [sectionId], references: [id])
+  sectionId    Int     @unique @map("section_id")
+  student      Student @relation(fields: [studentId], references: [id])
+  studentId    Int     @map("student_id")
+  totalScore   Int     @map("total_score")
+  correctCount Int     @map("correct_count")
+  // rank
+
+  @@map("leaderboards")
+}
+
+model RoomParticipant {
+  id        Int      @id @default(autoincrement())
+  section   Section  @relation(fields: [sectionId], references: [id])
+  sectionId Int      @map("section_id")
+  student   Student  @relation(fields: [studentId], references: [id])
+  studentId Int      @map("student_id")
+  nickname  String
+  isBanned  Boolean  @map("is_banned")
+  joinedAt  DateTime @map("joined_at")
+
+  @@map("room_participants")
+}
+
+model StudentAnswer {
+  id             Int      @id @default(autoincrement())
+  student        Student  @relation(fields: [studentId], references: [id])
+  studentId      Int      @map("student_id")
+  question       Question @relation(fields: [questionId], references: [id])
+  questionId     Int      @map("question_id")
+  section        Section  @relation(fields: [sectionId], references: [id])
+  sectionId      Int      @map("section_id")
+  // selectedAnswer  @map("selected_answer")
+  isCorrect      Boolean  @map("is_correct")
+  tabSwitchCount Int      @map("tab_switch_count")
+  isFlagged      Boolean  @map("is_flagged")
+
+  @@map("student_answers")
+}
+
+enum SectionStatus {
+  WAITING  @map("waiting")
+  PLAYING  @map("playing")
+  FINISHED @map("finished")
+
+  @@map("section_status_enum")
+}
+
+enum StudentType {
+  REGISTERED @map("registered")
+  GUEST      @map("guest")
+
+  @@map("student_type_enum")
 }
