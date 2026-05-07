@@ -1,132 +1,143 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-model Teacher {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  name      String
-  role      String
-  createdAt DateTime  @default(now()) @map("created_at")
-  exams     Exam[]
-  sections  Section[]
+model User {
+  id                     Int            @id @default(autoincrement())
+  email                  String         @unique
+  username               String
+  password               String         @db.Char(60)
+  role                   UserRole
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+  examsAsTeacher         Exam[]         @relation("UserExams")
+  examAttemptsAsStudent  ExamAttempt[]  @relation("UserExamAttempts")
+  violationLogsAsStudent ViolationLog[] @relation("UserViolationLogs")
 
-  @@map("teachers")
+  @@map("users")
 }
 
 model Exam {
-  id          Int        @id @default(autoincrement())
-  teacher     Teacher    @relation(fields: [teacherId], references: [id])
-  teacherId   Int        @map("teacher_id")
-  title       String
-  description String
-  isPublic    Boolean    @map("is_public")
-  questions   Question[]
-  sections    Section[]
+  id              Int           @id @default(autoincrement())
+  teacher         User          @relation("UserExams", fields: [teacherId], references: [id])
+  teacherId       Int           @map("teacher_id")
+  title           String
+  description     String?       @db.Text
+  startTime       DateTime      @map("start_time")
+  endTime         DateTime      @map("end_time")
+  durationMinutes Int           @default(0) @map("duration_minutes")
+  code            String        @unique @db.VarChar(8)
+  isActive        Boolean       @default(true) @map("is_active")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  questions       Question[]
+  examAttempts    ExamAttempt[]
 
   @@map("exams")
 }
 
 model Question {
-  id             Int             @id @default(autoincrement())
-  exam           Exam            @relation(fields: [examId], references: [id])
-  examId         Int             @map("exam_id")
-  // context
-  options        Json
-  // correctAnswer  @map("correct_answer")
-  studentAnswers StudentAnswer[]
+  id         Int      @id @default(autoincrement())
+  exam       Exam     @relation(fields: [examId], references: [id])
+  examId     Int      @map("exam_id")
+  content    String   @db.Text
+  imageUrl   String?  @map("image_url")
+  orderIndex Int      @map("order_index")
+  createdAt  DateTime @default(now()) @map("created_at")
+  options    Option[]
+  answers    Answer[]
 
   @@map("questions")
 }
 
-model Section {
-  id               Int               @id @default(autoincrement())
-  exam             Exam              @relation(fields: [examId], references: [id])
-  examId           Int               @map("exam_id")
-  host             Teacher           @relation(fields: [hostId], references: [id])
-  hostId           Int               @map("host_id")
-  // pinCode  @map("pin_code")
-  status           SectionStatus
-  startedAt        DateTime          @map("started_at")
-  leaderboard      Leaderboard?
-  roomParticipants RoomParticipant[]
-  studentAnswers   StudentAnswer[]
+model Option {
+  id         Int      @id @default(autoincrement())
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId Int      @map("question_id")
+  label      String   @db.Char(1)
+  content    String   @db.Text
+  isCorrect  Boolean  @map("is_correct")
+  createdAt  DateTime @default(now()) @map("created_at")
+  answers    Answer[]
 
-  @@map("section")
+  @@map("options")
 }
 
-model Student {
-  id               Int               @id @default(autoincrement())
-  type             StudentType
-  email            String
-  password         String            @db.Char(60)
-  name             String
-  createdAt        DateTime          @default(now()) @map("created_at")
-  leaderboards     Leaderboard[]
-  roomParticipants RoomParticipant[]
-  answers          StudentAnswer[]
+model ExamAttempt {
+  id             Int               @id @default(autoincrement())
+  exam           Exam              @relation(fields: [examId], references: [id])
+  examId         Int               @map("exam_id")
+  student        User              @relation("UserExamAttempts", fields: [studentId], references: [id])
+  studentId      Int               @map("student_id")
+  startedAt      DateTime          @map("started_at")
+  submittedAt    DateTime?         @map("submitted_at")
+  totalCorrect   Int               @default(0) @map("total_correct")
+  score          Decimal           @db.Decimal(5, 2)
+  violationCount Int               @default(0) @map("violation_count")
+  status         ExamAttemptStatus @default(IN_PROGRESS)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  answers        Answer[]
+  violationLogs  ViolationLog[]
 
-  @@map("students")
+  @@map("exam_attempts")
 }
 
-model Leaderboard {
-  id           Int     @id @default(autoincrement())
-  section      Section @relation(fields: [sectionId], references: [id])
-  sectionId    Int     @unique @map("section_id")
-  student      Student @relation(fields: [studentId], references: [id])
-  studentId    Int     @map("student_id")
-  totalScore   Int     @map("total_score")
-  correctCount Int     @map("correct_count")
-  // rank
+model Answer {
+  id               Int         @id @default(autoincrement())
+  attempt          ExamAttempt @relation(fields: [attemptId], references: [id])
+  attemptId        Int         @map("attempt_id")
+  question         Question    @relation(fields: [questionId], references: [id])
+  questionId       Int         @map("question_id")
+  selectedOption   Option?     @relation(fields: [selectedOptionId], references: [id])
+  selectedOptionId Int?        @map("selected_option_id")
+  isCorrect        Boolean     @map("is_correct")
+  answeredAt       DateTime    @map("answered_at")
 
-  @@map("leaderboards")
+  @@map("answers")
 }
 
-model RoomParticipant {
-  id        Int      @id @default(autoincrement())
-  section   Section  @relation(fields: [sectionId], references: [id])
-  sectionId Int      @map("section_id")
-  student   Student  @relation(fields: [studentId], references: [id])
-  studentId Int      @map("student_id")
-  nickname  String
-  isBanned  Boolean  @map("is_banned")
-  joinedAt  DateTime @map("joined_at")
+model ViolationLog {
+  id            Int           @id @default(autoincrement())
+  attempt       ExamAttempt   @relation(fields: [attemptId], references: [id])
+  attemptId     Int           @map("attempt_id")
+  student       User          @relation("UserViolationLogs", fields: [studentId], references: [id])
+  studentId     Int           @map("student_id")
+  violationType ViolationType @map("violation_type")
+  description   String        @db.Text
+  evidenceUrl   String?       @map("evidence_url")
+  timestamp     DateTime
 
-  @@map("room_participants")
+  @@map("violation_logs")
 }
 
-model StudentAnswer {
-  id             Int      @id @default(autoincrement())
-  student        Student  @relation(fields: [studentId], references: [id])
-  studentId      Int      @map("student_id")
-  question       Question @relation(fields: [questionId], references: [id])
-  questionId     Int      @map("question_id")
-  section        Section  @relation(fields: [sectionId], references: [id])
-  sectionId      Int      @map("section_id")
-  // selectedAnswer  @map("selected_answer")
-  isCorrect      Boolean  @map("is_correct")
-  tabSwitchCount Int      @map("tab_switch_count")
-  isFlagged      Boolean  @map("is_flagged")
+enum UserRole {
+  TEACHER @map("teacher")
+  STUDENT @map("student")
 
-  @@map("student_answers")
+  @@map("user_role_enum")
 }
 
-enum SectionStatus {
-  WAITING  @map("waiting")
-  PLAYING  @map("playing")
-  FINISHED @map("finished")
+enum ExamAttemptStatus {
+  IN_PROGRESS @map("in_progress")
+  COMPLETED   @map("completed")
+  TERMINATED  @map("terminated")
 
-  @@map("section_status_enum")
+  @@map("exam_attempt_status_enum")
 }
 
-enum StudentType {
-  REGISTERED @map("registered")
-  GUEST      @map("guest")
+enum ViolationType {
+  TAB_SWITCH            @map("tab_switch")
+  KEYBOARD_COPY         @map("keyboard_copy")
+  KEYBOARD_PASTE        @map("keyboard_paste")
+  CAMERA_MULTIPLE_FACES @map("camera_multiple_faces")
+  CAMERA_GAZE_AWAY      @map("camera_gaze_away")
+  CAMERA_MISSING        @map("camera_missing")
 
-  @@map("student_type_enum")
+  @@map("violation_type_enum")
 }
