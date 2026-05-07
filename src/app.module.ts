@@ -1,9 +1,14 @@
 import { AuthModule } from '@/modules/auth/auth.module';
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import morgan from 'morgan';
 
 @Module({
   imports: [AuthModule],
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(morgan('dev')).forRoutes('*');
+  }
+}

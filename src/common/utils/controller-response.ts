@@ -1,32 +1,33 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { Result } from './result';
 
-export class ControllerResponse<T = null> {
-  readonly success: boolean;
-
-  readonly message: string;
-
-  readonly status: number;
-
-  readonly error: string | null;
-
-  readonly data: T;
-
+export class ControllerResponse<T> {
   private constructor(
-    success: boolean,
-    status: number,
+    readonly success: boolean,
+    readonly status: number,
+    readonly message: string,
+    readonly data: T,
+    readonly error: string | null,
+  ) {}
+
+  static ok<T>(
+    status: HttpStatus,
     message: string,
     data: T,
-    error: string | null,
-  ) {
-    this.message = message;
-    this.data = data;
-    this.error = error;
-    this.status = status;
-    this.success = success;
-  }
+  ): ControllerResponse<T>;
+  static ok<T>(status: HttpStatus, result: Result<T>): ControllerResponse<T>;
 
-  static ok<T>(status: HttpStatus, message: string, data: T) {
-    return new ControllerResponse(true, status, message, data, null);
+  static ok<T>(status: HttpStatus, arg2: Result<T> | string, data?: T) {
+    if (arg2 instanceof Result) {
+      return new ControllerResponse(
+        true,
+        status,
+        arg2.message,
+        arg2.data,
+        null,
+      );
+    }
+    return new ControllerResponse(true, status, arg2, data, null);
   }
 
   static fail(error: HttpException) {
