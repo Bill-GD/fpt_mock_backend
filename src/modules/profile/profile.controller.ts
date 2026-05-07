@@ -2,19 +2,18 @@ import { RequesterID } from '@/common/decorators';
 import { AuthenticatedGuard } from '@/common/guards/authenticated.guard';
 import { ControllerResponse } from '@/common/utils/controller-response';
 import {
+  BadRequestException,
+  Body,
+  ConflictException,
   Controller,
-  Post,
-  Delete,
   Get,
   HttpStatus,
   NotFoundException,
-  Body,
-  BadRequestException,
-  ConflictException,
+  Post,
   UseGuards,
 } from '@nestjs/common';
-import { ProfileService } from './profile.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ProfileService } from './profile.service';
 
 @Controller('profile')
 @UseGuards(AuthenticatedGuard)
@@ -43,14 +42,5 @@ export class ProfileController {
       throw new ConflictException(res.message);
     }
     return ControllerResponse.ok(HttpStatus.OK, res);
-  }
-
-  @Delete()
-  async delete(@RequesterID() requesterId: number) {
-    const res = await this.profileService.delete(requesterId);
-    if (!res.success) {
-      throw new NotFoundException(res.message);
-    }
-    return ControllerResponse.ok(HttpStatus.NO_CONTENT, res);
   }
 }

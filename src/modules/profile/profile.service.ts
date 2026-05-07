@@ -39,13 +39,4 @@ export class ProfileService {
 
     return Result.ok('Updated profile', { user: sanitized });
   }
-
-  async delete(id: number) {
-    const res = await this.prisma.user.deleteMany({ where: { id } });
-    if (res.count === 0) {
-      return Result.fail(`User #${id} doesn't exist`);
-    }
-
-    return Result.ok('Deleted profile', null);
-  }
 }
