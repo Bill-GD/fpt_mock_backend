@@ -9,49 +9,46 @@ datasource db {
 }
 
 model User {
-  id                     Int            @id @default(autoincrement())
-  email                  String         @unique
-  username               String
-  password               String         @db.Char(60)
-  role                   UserRole
-  createdAt              DateTime       @default(now()) @map("created_at")
-  updatedAt              DateTime       @updatedAt @map("updated_at")
-  examsAsTeacher         Exam[]         @relation("UserExams")
-  examAttemptsAsStudent  ExamAttempt[]  @relation("UserExamAttempts")
-  violationLogsAsStudent ViolationLog[] @relation("UserViolationLogs")
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String
+  password  String   @db.Char(60)
+  role      UserRole
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  exams         Exam[]         @relation("teacher_exams")
+  rooms         Room[]         @relation("teacher_rooms")
+  attempts      Attempt[]      @relation("student_attempts")
+  violationLogs ViolationLog[] @relation("student_violation_logs")
 
   @@map("users")
 }
 
 model Exam {
-  id              Int           @id @default(autoincrement())
-  teacher         User          @relation("UserExams", fields: [teacherId], references: [id])
-  teacherId       Int           @map("teacher_id")
+  id              Int      @id @default(autoincrement())
+  teacher         User     @relation("teacher_exams", fields: [teacherId], references: [id])
+  teacherId       Int      @map("teacher_id")
   title           String
-  description     String?       @db.Text
-  startTime       DateTime      @map("start_time")
-  endTime         DateTime      @map("end_time")
-  durationMinutes Int           @default(0) @map("duration_minutes")
-  code            String        @unique @db.VarChar(8)
-  isActive        Boolean       @default(true) @map("is_active")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  questions       Question[]
-  examAttempts    ExamAttempt[]
+  description     String?  @db.Text
+  durationMinutes Int      @map("duration_minutes")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  questions Question[]
+  rooms     Room[]
 
   @@map("exams")
 }
 
 model Question {
-  id         Int      @id @default(autoincrement())
-  exam       Exam     @relation(fields: [examId], references: [id])
-  examId     Int      @map("exam_id")
-  content    String   @db.Text
-  imageUrl   String?  @map("image_url")
-  orderIndex Int      @map("order_index")
-  createdAt  DateTime @default(now()) @map("created_at")
-  options    Option[]
-  answers    Answer[]
+  id      Int    @id @default(autoincrement())
+  exam    Exam   @relation(fields: [examId], references: [id])
+  examId  Int    @map("exam_id")
+  content String @db.Text
+
+  options Option[]
+  answers Answer[]
 
   @@map("questions")
 }
@@ -60,56 +57,65 @@ model Option {
   id         Int      @id @default(autoincrement())
   question   Question @relation(fields: [questionId], references: [id])
   questionId Int      @map("question_id")
-  label      String   @db.Char(1)
   content    String   @db.Text
   isCorrect  Boolean  @map("is_correct")
-  createdAt  DateTime @default(now()) @map("created_at")
-  answers    Answer[]
+
+  answers Answer[]
 
   @@map("options")
 }
 
-model ExamAttempt {
-  id             Int               @id @default(autoincrement())
-  exam           Exam              @relation(fields: [examId], references: [id])
-  examId         Int               @map("exam_id")
-  student        User              @relation("UserExamAttempts", fields: [studentId], references: [id])
-  studentId      Int               @map("student_id")
-  startedAt      DateTime          @map("started_at")
-  submittedAt    DateTime?         @map("submitted_at")
-  totalCorrect   Int               @default(0) @map("total_correct")
-  score          Decimal           @db.Decimal(5, 2)
-  violationCount Int               @default(0) @map("violation_count")
-  status         ExamAttemptStatus @default(IN_PROGRESS)
-  createdAt      DateTime          @default(now()) @map("created_at")
-  answers        Answer[]
-  violationLogs  ViolationLog[]
+model Room {
+  id        Int        @id @default(autoincrement())
+  exam      Exam       @relation(fields: [examId], references: [id])
+  examId    Int        @map("exam_id")
+  teacher   User       @relation("teacher_rooms", fields: [teacherId], references: [id])
+  teacherId Int        @map("teacher_id")
+  startedAt DateTime   @map("started_at")
+  code      String     @unique @db.VarChar(8)
+  status    RoomStatus @default(INACTIVE)
+  createdAt DateTime   @default(now()) @map("created_at")
 
-  @@map("exam_attempts")
+  attempts Attempt[]
+
+  @@map("rooms")
+}
+
+model Attempt {
+  id           Int       @id @default(autoincrement())
+  room         Room      @relation(fields: [roomId], references: [id])
+  roomId       Int       @map("room_id")
+  student      User      @relation("student_attempts", fields: [studentId], references: [id])
+  studentId    Int       @map("student_id")
+  submittedAt  DateTime? @map("submitted_at")
+  correctCount Int       @default(0) @map("correct_count")
+  score        Int       @default(0)
+
+  answers    Answer[]
+  violations ViolationLog[]
+
+  @@map("attempts")
 }
 
 model Answer {
-  id               Int         @id @default(autoincrement())
-  attempt          ExamAttempt @relation(fields: [attemptId], references: [id])
-  attemptId        Int         @map("attempt_id")
-  question         Question    @relation(fields: [questionId], references: [id])
-  questionId       Int         @map("question_id")
-  selectedOption   Option?     @relation(fields: [selectedOptionId], references: [id])
-  selectedOptionId Int?        @map("selected_option_id")
-  isCorrect        Boolean     @map("is_correct")
-  answeredAt       DateTime    @map("answered_at")
+  id               Int      @id @default(autoincrement())
+  attempt          Attempt  @relation(fields: [attemptId], references: [id])
+  attemptId        Int      @map("attempt_id")
+  question         Question @relation(fields: [questionId], references: [id])
+  questionId       Int      @map("question_id")
+  selectedOption   Option?  @relation(fields: [selectedOptionId], references: [id])
+  selectedOptionId Int?     @map("selected_option_id")
 
   @@map("answers")
 }
 
 model ViolationLog {
   id            Int           @id @default(autoincrement())
-  attempt       ExamAttempt   @relation(fields: [attemptId], references: [id])
+  attempt       Attempt       @relation(fields: [attemptId], references: [id])
   attemptId     Int           @map("attempt_id")
-  student       User          @relation("UserViolationLogs", fields: [studentId], references: [id])
+  student       User          @relation("student_violation_logs", fields: [studentId], references: [id])
   studentId     Int           @map("student_id")
   violationType ViolationType @map("violation_type")
-  description   String        @db.Text
   evidenceUrl   String?       @map("evidence_url")
   timestamp     DateTime
 
@@ -123,12 +129,13 @@ enum UserRole {
   @@map("user_role_enum")
 }
 
-enum ExamAttemptStatus {
-  IN_PROGRESS @map("in_progress")
-  COMPLETED   @map("completed")
-  TERMINATED  @map("terminated")
+enum RoomStatus {
+  INACTIVE @map("inactive")
+  WAITING  @map("waiting")
+  ACTIVE   @map("active")
+  FINISHED @map("finished")
 
-  @@map("exam_attempt_status_enum")
+  @@map("room_status_enum")
 }
 
 enum ViolationType {
