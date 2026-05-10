@@ -1,0 +1,46 @@
+## Quiz/Test platform business logic
+
+- Users must register account with specified role (teacher / student)
+- Auth:
+  - Register: email, username, password, role
+  - Login: email, password
+- Teacher:
+  - Overview: View exams (& count), attempt & violation count
+  - View exam list:
+    - title, active room, old rooms, question count
+    - action: share (short share token)
+    - view current room:
+      - room & quiz details, timer
+      - student progress, answers (realtime leaderboard)
+  - Create exams: title, time (minute), description (optional), questions
+    - Question: content, options (at least 2), correct answer
+    - Methods:
+      - From Excel/CSV: format maybe `content,A,B,C,D,answer`
+      - Manual: input
+      - genAI: topic, count, difficulty
+  - Create room (from exam/quiz):
+    - unique pin (alphanumeric): 6 chars = ~2.1B, 8 chars = ~2.8T unique values
+    - view students joining
+    - start room → view progress (can exit) → view again in exam list
+  - View results:
+    - filter by room code and/or violation
+    - action: view submission (right panel), view quiz
+- Student:
+  - Overview: quick join by pin, most recent results (6-8)
+  - Join: same (but has cheat detection warnings)
+  - History: paginated exam results
+    - details: title?, score, time, violation count
+    - actions: view full result
+- Exam:
+  - questions, time/duration
+  - questions: content, options
+  - options (at least 2): content, is correct
+- Room:
+  - pin/code
+  - shuffle questions & options
+  - students join in the same session
+  - realtime leaderboard
+- Cheat detection:
+  - tab switch
+  - copy/paste
+  - camera (gesture detection): look away, multiple faces, missing/absent
