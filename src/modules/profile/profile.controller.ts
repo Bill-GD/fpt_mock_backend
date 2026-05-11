@@ -41,6 +41,6 @@ export class ProfileController {
     if (!res.success) {
       throw new ConflictException(res.message);
     }
-    return ControllerResponse.ok(HttpStatus.OK, res);
+    return ControllerResponse.ok(HttpStatus.NO_CONTENT, res);
   }
 }
