@@ -23,7 +23,7 @@ import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
 import { ExamService } from './exam.service';
 
-@Controller('exam')
+@Controller('exams')
 @UseGuards(AuthenticatedGuard)
 export class ExamController {
   constructor(private readonly examService: ExamService) {}

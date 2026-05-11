@@ -1,4 +1,4 @@
-import { UserRoleEnum } from '@/modules/auth/dto/register.dto';
+import { UserRoleEnum } from '@/common/enums/user-role.enum';
 
 export type JwtUserPayload = {
   id: number;

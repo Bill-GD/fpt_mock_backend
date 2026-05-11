@@ -1,11 +1,12 @@
-import { AuthModule } from '@/modules/auth/auth.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import morgan from 'morgan';
-import { ProfileModule } from './modules/profile/profile.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { ExamModule } from './modules/exam/exam.module';
+import { ProfileModule } from './modules/profile/profile.module';
+import { RoomModule } from './modules/room/room.module';
 
 @Module({
-  imports: [AuthModule, ProfileModule, ExamModule],
+  imports: [AuthModule, ProfileModule, ExamModule, RoomModule],
   controllers: [],
   providers: [],
 })
