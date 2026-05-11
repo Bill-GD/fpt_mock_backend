@@ -1,13 +1,15 @@
-import { AuthModule } from '@/modules/auth/auth.module';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import morgan from 'morgan';
+import { AuthModule } from './modules/auth/auth.module';
+import { ExamModule } from './modules/exam/exam.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { RoomModule } from './modules/room/room.module';
 import { ExamsModule } from './modules/exams/exams.module';
-import { ConfigModule } from '@nestjs/config'
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [AuthModule, ProfileModule, ExamsModule,
-    ConfigModule.forRoot({ isGlobal: true }), // Bật tính năng đọc .env toàn cục
+  imports: [AuthModule, ProfileModule, ExamModule, RoomModule,
+    ConfigModule.forRoot({ isGlobal: true }),
     ExamsModule
   ],
   controllers: [],

@@ -6,11 +6,7 @@ import {
   Length,
   NotContains,
 } from 'class-validator';
-
-export enum UserRoleEnum {
-  TEACHER = 'TEACHER',
-  STUDENT = 'STUDENT',
-}
+import { UserRoleEnum } from '@/common/enums/user-role.enum';
 
 export class RegisterDto {
   @IsNotEmpty()
