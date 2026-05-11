@@ -39,4 +39,18 @@ export class AuthController {
     });
     return ControllerResponse.ok(HttpStatus.OK, res);
   }
+
+  @Post('logout')
+  logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie('jwt', {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      httpOnly: true,
+    });
+    return ControllerResponse.ok(
+      HttpStatus.OK,
+      'Logged out successfully',
+      null,
+    );
+  }
 }
