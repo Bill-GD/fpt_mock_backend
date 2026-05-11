@@ -1,6 +1,5 @@
 import { Result } from '@/common/utils/result';
 import { JwtUserPayload } from '@/common/utils/types';
-import { UserRole } from '@/database/generated/prisma/client';
 import { PrismaService } from '@/services/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -34,7 +33,6 @@ export class AuthService {
       data: [
         {
           ...dto,
-          role: dto.role.toUpperCase() as UserRole,
           password: hashedPassword,
         },
       ],
