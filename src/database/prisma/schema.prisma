@@ -88,7 +88,6 @@ model Attempt {
   studentId    Int       @map("student_id")
   submittedAt  DateTime? @map("submitted_at")
   correctCount Int       @default(0) @map("correct_count")
-  score        Int       @default(0)
 
   answers    Answer[]
   violations ViolationLog[]
