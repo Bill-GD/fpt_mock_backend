@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import morgan from 'morgan';
 import { AuthModule } from './modules/auth/auth.module';
 import { ExamModule } from './modules/exam/exam.module';
-import { ExamsModule } from './modules/exams/exams.module';
+
 import { ProfileModule } from './modules/profile/profile.module';
 import { RoomModule } from './modules/room/room.module';
 
@@ -14,7 +14,7 @@ import { RoomModule } from './modules/room/room.module';
     ExamModule,
     RoomModule,
     ConfigModule.forRoot({ isGlobal: true }),
-    ExamsModule,
+
   ],
   controllers: [],
   providers: [],
