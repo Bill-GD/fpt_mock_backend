@@ -4,4 +4,3 @@ export enum RoomStatusEnum {
   ACTIVE = 'ACTIVE',
   FINISHED = 'FINISHED',
 }
-

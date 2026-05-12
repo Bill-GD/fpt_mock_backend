@@ -71,6 +71,7 @@ model Room {
   examId    Int        @map("exam_id")
   teacher   User       @relation("teacher_rooms", fields: [teacherId], references: [id])
   teacherId Int        @map("teacher_id")
+  startedAt DateTime?  @map("started_at")
   code      String     @unique @db.VarChar(8)
   status    RoomStatus @default(INACTIVE)
   createdAt DateTime   @default(now()) @map("created_at")

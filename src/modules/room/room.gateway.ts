@@ -55,6 +55,12 @@ export class RoomGateway {
     return `Left quiz room ${roomWsId}`;
   }
 
+  @SubscribeMessage('start')
+  async startRoom(@MessageBody() dto: JoinRoomDto) {
+    const res = await this.roomService.startRoom(dto.roomId);
+    this.server.to(getRoomWsId(dto.roomId)).emit('room_started', res.data);
+  }
+
   @SubscribeMessage('answer')
   async studentAnswer(
     @WsRequester() requester: JwtUserPayload,
@@ -66,7 +72,7 @@ export class RoomGateway {
     }
     this.server
       .to(getRoomWsId(dto.roomId))
-      .emit('update_leaderboard', { student: requester, ...res.data! });
+      .emit('leaderboard', { student: requester, ...res.data! });
     return 'Student answered';
   }
 }
