@@ -99,6 +99,7 @@ export class RoomService {
 
   async studentAnswer(studentId: number, dto: StudentAnswerDto) {
     let isCorrect = false;
+    let correctCount = 0;
     try {
       await this.prisma.$transaction(async (tx) => {
         const attempt = await tx.attempt.findFirst({
@@ -106,6 +107,7 @@ export class RoomService {
         });
 
         if (!attempt) throw new Error('ATTEMPT_NOT_FOUND');
+        correctCount = attempt.correctCount;
 
         const option = await tx.option.findUnique({
           where: { id: dto.optionId },
@@ -132,6 +134,7 @@ export class RoomService {
             where: { id: attempt.id },
             data: { correctCount: { increment: 1 } },
           });
+          correctCount++;
         }
       });
     } catch (e) {
@@ -147,6 +150,6 @@ export class RoomService {
       throw e;
     }
 
-    return Result.ok('Answer recorded', { isCorrect });
+    return Result.ok('Answer recorded', { isCorrect, correctCount });
   }
 }
