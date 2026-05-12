@@ -1,3 +1,4 @@
+import { RoomStatusEnum } from '@/common/enums/room-status.enum';
 import { RoomQuery } from '@/common/queries/room.query';
 import { Result } from '@/common/utils/result';
 import { Prisma } from '@/database/generated/prisma/client';
@@ -87,6 +88,7 @@ export class RoomService {
         examId: dto.examId,
         teacherId: requesterId,
         code: pin,
+        status: RoomStatusEnum.INACTIVE,
       },
       select: {
         id: true,
@@ -171,6 +173,43 @@ export class RoomService {
     };
 
     return Result.ok('Fetched room', shaped);
+  }
+
+  async startRoom(id: number) {
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const room = await tx.room.update({
+          where: { id },
+          data: { status: 'ACTIVE', startedAt: new Date() },
+          select: { id: true, startedAt: true, examId: true },
+        });
+
+        const exam = await tx.exam.findUnique({
+          where: { id: room.examId },
+          select: { durationMinutes: true },
+        });
+
+        if (!exam) throw new Error('EXAM_NOT_FOUND');
+
+        const startTime = room.startedAt!;
+        const endTime = new Date(
+          startTime.getTime() + exam.durationMinutes * 60 * 1000,
+        );
+
+        return {
+          startTime,
+          endTime,
+          durationMinutes: exam.durationMinutes,
+        };
+      });
+
+      return Result.ok('Room started', result);
+    } catch (e) {
+      if ((e as Error).message === 'EXAM_NOT_FOUND') {
+        return Result.fail('Exam not found');
+      }
+      throw e;
+    }
   }
 
   async studentAnswer(studentId: number, dto: StudentAnswerDto) {
