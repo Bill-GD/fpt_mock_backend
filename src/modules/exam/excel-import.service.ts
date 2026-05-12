@@ -1,7 +1,7 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '@/services/prisma.service';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import * as xlsx from 'xlsx';
-import { PrismaService } from '../../services/prisma.service';
-import { ParsedOption, ParsedQuestion, RawExcelRow } from './dto/importExcel.dto';
+import { ParsedQuestion, RawExcelRow } from './dto/importExcel.dto';
 
 @Injectable()
 export class ExcelImportService {
@@ -9,7 +9,9 @@ export class ExcelImportService {
 
   async importQuestions(examId: number, fileBuffer: Buffer) {
     const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-    const rows = xlsx.utils.sheet_to_json<RawExcelRow>(workbook.Sheets[workbook.SheetNames[0]]);
+    const rows = xlsx.utils.sheet_to_json<RawExcelRow>(
+      workbook.Sheets[workbook.SheetNames[0]],
+    );
     if (!rows.length) throw new BadRequestException('File rỗng!');
 
     const questionsToInsert: ParsedQuestion[] = [];
@@ -29,8 +31,8 @@ export class ExcelImportService {
             examId: examId,
             content: questionsToInsert[i].content,
             orderIndex: i + 1,
-            options: { createMany: { data: questionsToInsert[i].options } }
-          }
+            options: { createMany: { data: questionsToInsert[i].options } },
+          },
         });
         count++;
       }

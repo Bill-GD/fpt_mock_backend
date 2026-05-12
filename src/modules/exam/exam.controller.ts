@@ -16,17 +16,26 @@ import {
   Post,
   Query,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { type Response } from 'express';
+import { AiGenerateService } from './ai-generate.service';
 import { CreateExamDto } from './dto/create-exam.dto';
 import { UpdateExamDto } from './dto/update-exam.dto';
 import { ExamService } from './exam.service';
+import { ExcelImportService } from './excel-import.service';
 
 @Controller('exams')
 @UseGuards(AuthenticatedGuard)
 export class ExamController {
-  constructor(private readonly examService: ExamService) {}
+  constructor(
+    private readonly examService: ExamService,
+    private excelService: ExcelImportService,
+    private aiService: AiGenerateService,
+  ) {}
 
   @Post()
   async create(@RequesterID() requesterId: number, @Body() dto: CreateExamDto) {
@@ -77,5 +86,28 @@ export class ExamController {
       throw new BadRequestException(res.message);
     }
     return ControllerResponse.ok(HttpStatus.NO_CONTENT, res);
+  }
+
+  @Post(':id/import-excel')
+  @UseInterceptors(FileInterceptor('file'))
+  async importExcel(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    return this.excelService.importQuestions(id, file.buffer);
+  }
+
+  @Post(':id/generate-ai')
+  async generateAi(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { topic: string; difficulty: string; quantity: number },
+  ) {
+    return this.aiService.generateQuestions(
+      id,
+      body.topic,
+      body.difficulty,
+      body.quantity,
+    );
   }
 }
