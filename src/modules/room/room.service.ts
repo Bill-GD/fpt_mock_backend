@@ -97,6 +97,82 @@ export class RoomService {
     return Result.ok('Created room', res);
   }
 
+  async findOne(requesterId: number, roomId: number) {
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+      include: {
+        exam: {
+          select: {
+            id: true,
+            title: true,
+            durationMinutes: true,
+            _count: { select: { questions: true } },
+          },
+        },
+        teacher: { select: { id: true } },
+        attempts: {
+          select: {
+            id: true,
+            roomId: true,
+            studentId: true,
+            student: { select: { id: true, username: true } },
+            correctCount: true,
+            submittedAt: true,
+            _count: { select: { answers: true, violations: true } },
+          },
+          orderBy: { correctCount: 'desc' },
+        },
+        _count: { select: { attempts: true } },
+      },
+    });
+
+    if (!room) return Result.fail(`Room #${roomId} doesn't exist`);
+
+    // only owner (teacher) or participants can view room details
+    if (room.teacherId !== requesterId) {
+      let isParticipant = false;
+      for (const a of room.attempts) {
+        if (a.studentId === requesterId) {
+          isParticipant = true;
+          break;
+        }
+      }
+
+      if (!isParticipant) {
+        return Result.fail(
+          'Forbidden: only owner or participants can view this room',
+        );
+      }
+    }
+
+    const attempts = room.attempts.map((a) => ({
+      id: a.id,
+      studentId: a.studentId,
+      username: a.student?.username,
+      correctCount: a.correctCount,
+      submittedAt: a.submittedAt,
+      answerCount: a._count?.answers ?? 0,
+      violationCount: a._count?.violations ?? 0,
+    }));
+
+    const shaped = {
+      id: room.id,
+      code: room.code,
+      status: room.status,
+      createdAt: room.createdAt,
+      exam: {
+        id: room.exam.id,
+        title: room.exam.title,
+        durationMinutes: room.exam.durationMinutes,
+        questionCount: room.exam._count?.questions ?? 0,
+      },
+      attemptCount: room._count?.attempts ?? 0,
+      attempts,
+    };
+
+    return Result.ok('Fetched room', shaped);
+  }
+
   async studentAnswer(studentId: number, dto: StudentAnswerDto) {
     let isCorrect = false;
     let correctCount = 0;
