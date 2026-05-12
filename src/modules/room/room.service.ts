@@ -4,6 +4,7 @@ import { Prisma } from '@/database/generated/prisma/client';
 import { PrismaService } from '@/services/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { StudentAnswerDto } from './dto/student-answer.dto';
 import { OtpService } from './otp.service';
 
 @Injectable()
@@ -94,5 +95,58 @@ export class RoomService {
     });
 
     return Result.ok('Created room', res);
+  }
+
+  async studentAnswer(studentId: number, dto: StudentAnswerDto) {
+    let isCorrect = false;
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const attempt = await tx.attempt.findFirst({
+          where: { roomId: dto.roomId, studentId },
+        });
+
+        if (!attempt) throw new Error('ATTEMPT_NOT_FOUND');
+
+        const option = await tx.option.findUnique({
+          where: { id: dto.optionId },
+          select: { isCorrect: true },
+        });
+        if (!option) throw new Error('OPTION_NOT_FOUND');
+
+        const existing = await tx.answer.findFirst({
+          where: { attemptId: attempt.id, questionId: dto.questionId },
+        });
+        if (existing) throw new Error('ALREADY_ANSWERED');
+
+        await tx.answer.create({
+          data: {
+            attemptId: attempt.id,
+            questionId: dto.questionId,
+            selectedOptionId: dto.optionId,
+          },
+        });
+
+        if (option.isCorrect) {
+          isCorrect = true;
+          await tx.attempt.update({
+            where: { id: attempt.id },
+            data: { correctCount: { increment: 1 } },
+          });
+        }
+      });
+    } catch (e) {
+      if ((e as Error).message === 'ATTEMPT_NOT_FOUND') {
+        return Result.fail('Attempt not found');
+      }
+      if ((e as Error).message === 'OPTION_NOT_FOUND') {
+        return Result.fail('Option not found');
+      }
+      if ((e as Error).message === 'ALREADY_ANSWERED') {
+        return Result.fail('Answer already submitted');
+      }
+      throw e;
+    }
+
+    return Result.ok('Answer recorded', { isCorrect });
   }
 }
