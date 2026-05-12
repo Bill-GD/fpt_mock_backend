@@ -8,6 +8,8 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  Param,
+  ParseIntPipe,
   HttpStatus,
   NotFoundException,
   Post,
@@ -42,6 +44,26 @@ export class RoomController {
       throw new BadRequestException(res.message);
     }
     response.setHeader('X-Total-Count', `${res.data!.total}`);
+    return ControllerResponse.ok(HttpStatus.OK, res);
+  }
+
+  @Get(':id')
+  async findOne(
+    @RequesterID() requesterId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const res = await this.roomService.findOne(requesterId, id);
+    if (!res.success) {
+      const msg = res.message.toLowerCase();
+      if (msg.includes('forbid')) {
+        throw new ForbiddenException(res.message);
+      }
+      if (msg.includes("doesn't") || msg.includes('not found')) {
+        throw new NotFoundException(res.message);
+      }
+      throw new BadRequestException(res.message);
+    }
+
     return ControllerResponse.ok(HttpStatus.OK, res);
   }
 
