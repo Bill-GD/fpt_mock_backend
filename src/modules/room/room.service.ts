@@ -3,10 +3,15 @@ import { Result } from '@/common/utils/result';
 import { Prisma } from '@/database/generated/prisma/client';
 import { PrismaService } from '@/services/prisma.service';
 import { Injectable } from '@nestjs/common';
+import { CreateRoomDto } from './dto/create-room.dto';
+import { OtpService } from './otp.service';
 
 @Injectable()
 export class RoomService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly otpService: OtpService,
+  ) {}
 
   async findByExam(requesterId: number, query: RoomQuery) {
     if (!query.examId) {
@@ -41,7 +46,6 @@ export class RoomService {
           id: true,
           code: true,
           status: true,
-          startedAt: true,
           createdAt: true,
           _count: { select: { attempts: true } },
         },
@@ -56,11 +60,39 @@ export class RoomService {
       id: r.id,
       code: r.code,
       status: r.status,
-      startedAt: r.startedAt,
       createdAt: r.createdAt,
       attemptCount: r._count.attempts,
     }));
 
     return Result.ok('Fetched rooms', { rooms: shaped, total });
+  }
+
+  async createRoom(requesterId: number, dto: CreateRoomDto) {
+    const exam = await this.prisma.exam.findUnique({
+      where: { id: dto.examId },
+      select: { id: true, teacherId: true },
+    });
+    if (!exam) return Result.fail(`Exam #${dto.examId} doesn't exist`);
+    if (exam.teacherId !== requesterId) {
+      return Result.fail(
+        'Forbidden: only owner can create rooms for this exam',
+      );
+    }
+
+    const pin = this.otpService.generateOTP();
+
+    const res = await this.prisma.room.create({
+      data: {
+        examId: dto.examId,
+        teacherId: requesterId,
+        code: pin,
+      },
+      select: {
+        id: true,
+        code: true,
+      },
+    });
+
+    return Result.ok('Created room', res);
   }
 }

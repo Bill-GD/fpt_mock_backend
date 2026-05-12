@@ -4,17 +4,20 @@ import { RoomQuery } from '@/common/queries/room.query';
 import { ControllerResponse } from '@/common/utils/controller-response';
 import {
   BadRequestException,
+  Body,
   Controller,
   ForbiddenException,
   Get,
   HttpStatus,
   NotFoundException,
+  Post,
   Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { type Response } from 'express';
 import { RoomService } from './room.service';
+import { CreateRoomDto } from './dto/create-room.dto';
 
 @Controller('rooms')
 @UseGuards(AuthenticatedGuard)
@@ -40,5 +43,21 @@ export class RoomController {
     }
     response.setHeader('X-Total-Count', `${res.data!.total}`);
     return ControllerResponse.ok(HttpStatus.OK, res);
+  }
+
+  @Post()
+  async create(@RequesterID() requesterId: number, @Body() dto: CreateRoomDto) {
+    const res = await this.roomService.createRoom(requesterId, dto);
+    if (!res.success) {
+      const msg = res.message.toLowerCase();
+      if (msg.includes('forbid')) {
+        throw new ForbiddenException(res.message);
+      }
+      if (msg.includes("doesn't") || msg.includes('not found')) {
+        throw new NotFoundException(res.message);
+      }
+      throw new BadRequestException(res.message);
+    }
+    return ControllerResponse.ok(HttpStatus.CREATED, res);
   }
 }
