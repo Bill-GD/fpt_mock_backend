@@ -38,7 +38,7 @@ const handleServiceError = (res: { message: string }) => {
 @UseGuards(AuthenticatedGuard, RoleGuard)
 @Role(UserRoleEnum.TEACHER)
 export class RoomController {
-  constructor(private readonly roomService: RoomService) { }
+  constructor(private readonly roomService: RoomService) {}
 
   @Get()
   async findByExam(
@@ -52,21 +52,6 @@ export class RoomController {
     }
     response.setHeader('X-Total-Count', `${res.data!.total}`);
     return ControllerResponse.ok(HttpStatus.OK, res);
-  }
-  @Post()
-  async createRoom(
-    @RequesterID() requesterId: number,
-    @Body('examId') examId: number,
-  ) {
-    if (!examId) throw new BadRequestException('examId is required');
-    const res = await this.roomService.createRoom(requesterId, examId);
-    if (!res.success) {
-      if (res.message.toLowerCase().includes('forbid')) {
-        throw new ForbiddenException(res.message);
-      }
-      throw new BadRequestException(res.message);
-    }
-    return ControllerResponse.ok(HttpStatus.CREATED, res);
   }
 
   @Get('history')
@@ -87,25 +72,6 @@ export class RoomController {
     response.setHeader('X-Total-Count', `${res.data!.total}`);
     return ControllerResponse.ok(HttpStatus.OK, res);
   }
-
-  @Post('join')
-  async joinRoom(
-    @RequesterID() studentId: number,
-    @Body('code') code: string,
-  ) {
-    if (!code) throw new BadRequestException('Room code is required');
-    const res = await this.roomService.joinRoom(studentId, code);
-
-    if (!res.success) {
-      if (res.message.toLowerCase().includes('not found')) {
-        throw new NotFoundException(res.message);
-      }
-      throw new BadRequestException(res.message);
-    }
-    return ControllerResponse.ok(HttpStatus.OK, res);
-  }
-
-
 
   @Get(':id')
   async findOne(
