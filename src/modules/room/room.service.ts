@@ -15,6 +15,21 @@ export class RoomService {
     private readonly otpService: OtpService,
   ) {}
 
+  private handleError(error: Error) {
+    const message = error.message;
+    const errorMap: Record<string, string> = {
+      ROOM_NOT_FOUND: 'Room not found',
+      ROOM_NOT_ACTIVE: 'Room is not active',
+      ATTEMPT_NOT_FOUND: 'Attempt not found',
+      ATTEMPT_ALREADY_SUBMITTED: 'Attempt already submitted',
+      OPTION_NOT_FOUND: 'Option not found',
+      ALREADY_ANSWERED: 'Answer already submitted',
+      EXAM_NOT_FOUND: 'Exam not found',
+    };
+
+    return Result.fail(errorMap[message] || 'An error occurred');
+  }
+
   async findByExam(requesterId: number, query: RoomQuery) {
     if (!query.examId) {
       return Result.fail('examId is required');
@@ -175,12 +190,51 @@ export class RoomService {
     return Result.ok('Fetched room', shaped);
   }
 
+  async getRoomStatus(roomId: number) {
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+      select: { status: true },
+    });
+    return room?.status ?? null;
+  }
+
+  async forceSubmitAllAttempts(roomId: number) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const submittedCount = await tx.attempt.updateMany({
+        where: { roomId, submittedAt: null },
+        data: { submittedAt: new Date() },
+      });
+
+      return submittedCount.count;
+    });
+
+    return Result.ok('Force submitted attempts', { count: result });
+  }
+
+  async openRoom(id: number) {
+    try {
+      const room = await this.prisma.room.update({
+        where: { id },
+        data: { status: RoomStatusEnum.WAITING },
+        select: { id: true, status: true },
+      });
+
+      return Result.ok('Room opened', room);
+    } catch (e) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-member-access
+      if ((e as any).code === 'P2025') {
+        return Result.fail(`Room #${id} doesn't exist`);
+      }
+      throw e;
+    }
+  }
+
   async startRoom(id: number) {
     try {
       const result = await this.prisma.$transaction(async (tx) => {
         const room = await tx.room.update({
           where: { id },
-          data: { status: 'ACTIVE', startedAt: new Date() },
+          data: { status: RoomStatusEnum.ACTIVE, startedAt: new Date() },
           select: { id: true, startedAt: true, examId: true },
         });
 
@@ -205,8 +259,23 @@ export class RoomService {
 
       return Result.ok('Room started', result);
     } catch (e) {
-      if ((e as Error).message === 'EXAM_NOT_FOUND') {
-        return Result.fail('Exam not found');
+      return this.handleError(e as Error);
+    }
+  }
+
+  async endRoom(id: number) {
+    try {
+      const room = await this.prisma.room.update({
+        where: { id },
+        data: { status: RoomStatusEnum.FINISHED },
+        select: { id: true, status: true },
+      });
+
+      return Result.ok('Room ended', room);
+    } catch (e) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion, @typescript-eslint/no-unsafe-member-access
+      if ((e as any).code === 'P2025') {
+        return Result.fail(`Room #${id} doesn't exist`);
       }
       throw e;
     }
@@ -217,11 +286,22 @@ export class RoomService {
     let correctCount = 0;
     try {
       await this.prisma.$transaction(async (tx) => {
+        const room = await tx.room.findUnique({
+          where: { id: dto.roomId },
+          select: { status: true },
+        });
+        if (!room) throw new Error('ROOM_NOT_FOUND');
+        if ((room.status as RoomStatusEnum) !== RoomStatusEnum.ACTIVE) {
+          throw new Error('ROOM_NOT_ACTIVE');
+        }
+
         const attempt = await tx.attempt.findFirst({
           where: { roomId: dto.roomId, studentId },
+          select: { id: true, correctCount: true, submittedAt: true },
         });
 
         if (!attempt) throw new Error('ATTEMPT_NOT_FOUND');
+        if (attempt.submittedAt) throw new Error('ATTEMPT_ALREADY_SUBMITTED');
         correctCount = attempt.correctCount;
 
         const option = await tx.option.findUnique({
@@ -253,18 +333,41 @@ export class RoomService {
         }
       });
     } catch (e) {
-      if ((e as Error).message === 'ATTEMPT_NOT_FOUND') {
-        return Result.fail('Attempt not found');
-      }
-      if ((e as Error).message === 'OPTION_NOT_FOUND') {
-        return Result.fail('Option not found');
-      }
-      if ((e as Error).message === 'ALREADY_ANSWERED') {
-        return Result.fail('Answer already submitted');
-      }
-      throw e;
+      return this.handleError(e as Error);
     }
 
     return Result.ok('Answer recorded', { isCorrect, correctCount });
+  }
+
+  async studentSubmit(studentId: number, dto: StudentAnswerDto) {
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const room = await tx.room.findUnique({
+          where: { id: dto.roomId },
+          select: { status: true },
+        });
+        if (!room) throw new Error('ROOM_NOT_FOUND');
+        if ((room.status as RoomStatusEnum) !== RoomStatusEnum.ACTIVE) {
+          throw new Error('ROOM_NOT_ACTIVE');
+        }
+
+        const attempt = await tx.attempt.findFirst({
+          where: { roomId: dto.roomId, studentId },
+          select: { id: true, submittedAt: true },
+        });
+
+        if (!attempt) throw new Error('ATTEMPT_NOT_FOUND');
+        if (attempt.submittedAt) throw new Error('ATTEMPT_ALREADY_SUBMITTED');
+
+        await tx.attempt.update({
+          where: { id: attempt.id },
+          data: { submittedAt: new Date() },
+        });
+      });
+    } catch (e) {
+      return this.handleError(e as Error);
+    }
+
+    return Result.ok('Attempt submitted', {});
   }
 }
