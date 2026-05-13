@@ -1,5 +1,6 @@
 import { WsRequester } from '@/common/decorators';
 import { UserRoleEnum } from '@/common/enums/user-role.enum';
+import { RoomStatusEnum } from '@/common/enums/room-status.enum';
 import { WebSocketFilter } from '@/common/filters/web-socket.filter';
 import { WsAuthenticatedGuard } from '@/common/guards/authenticated.ws.guard';
 import { getRoomWsId } from '@/common/utils/helpers';
@@ -37,6 +38,12 @@ export class RoomGateway {
     @ConnectedSocket() client: Socket,
     @MessageBody() dto: JoinRoomDto,
   ) {
+    const status = await this.roomService.getRoomStatus(dto.roomId);
+
+    if (!status || (status as any) !== RoomStatusEnum.WAITING) {
+      return 'Room is not open for joining';
+    }
+
     const roomWsId = getRoomWsId(dto.roomId);
     await client.join(roomWsId);
     if (requester.role === UserRoleEnum.STUDENT) {
@@ -55,10 +62,48 @@ export class RoomGateway {
     return `Left quiz room ${roomWsId}`;
   }
 
+  @SubscribeMessage('open')
+  async openRoom(@MessageBody() dto: JoinRoomDto) {
+    const res = await this.roomService.openRoom(dto.roomId);
+    if (!res.success) {
+      return res.message;
+    }
+    this.server.to(getRoomWsId(dto.roomId)).emit('room_opened');
+    return 'Room opened';
+  }
+
   @SubscribeMessage('start')
   async startRoom(@MessageBody() dto: JoinRoomDto) {
     const res = await this.roomService.startRoom(dto.roomId);
+    if (!res.success) {
+      return res.message;
+    }
+
     this.server.to(getRoomWsId(dto.roomId)).emit('room_started', res.data);
+
+    const durationMs = res.data!.durationMinutes * 60 * 1000;
+    setTimeout(() => {
+      this.roomService
+        .endRoom(dto.roomId)
+        .then(async (endRes) => {
+          if (endRes.success) {
+            const forceRes = await this.roomService.forceSubmitAllAttempts(
+              dto.roomId,
+            );
+            this.server.to(getRoomWsId(dto.roomId)).emit('room_time_up');
+            if (forceRes.success) {
+              this.server
+                .to(getRoomWsId(dto.roomId))
+                .emit('forced_submit', { count: forceRes.data?.count });
+            }
+          }
+        })
+        .catch((e) => {
+          console.error(`Failed to end room #${dto.roomId}:`, e);
+        });
+    }, durationMs);
+
+    return 'Room started';
   }
 
   @SubscribeMessage('answer')
@@ -68,11 +113,26 @@ export class RoomGateway {
   ) {
     const res = await this.roomService.studentAnswer(requester.id, dto);
     if (!res.success) {
-      return 'Answer not recorded';
+      return res.message;
     }
     this.server
       .to(getRoomWsId(dto.roomId))
       .emit('leaderboard', { student: requester, ...res.data! });
     return 'Student answered';
+  }
+
+  @SubscribeMessage('submit')
+  async studentSubmit(
+    @WsRequester() requester: JwtUserPayload,
+    @MessageBody() dto: StudentAnswerDto,
+  ) {
+    const res = await this.roomService.studentSubmit(requester.id, dto);
+    if (!res.success) {
+      return res.message;
+    }
+    this.server
+      .to(getRoomWsId(dto.roomId))
+      .emit('student_submit', { student: requester });
+    return 'Student submitted';
   }
 }
