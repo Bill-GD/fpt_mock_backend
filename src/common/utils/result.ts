@@ -1,9 +1,13 @@
 export class Result<T> {
-  private constructor(
-    readonly success: boolean,
-    readonly message: string,
-    readonly data: T,
-  ) {}
+  success: boolean;
+  message: string;
+  data: T;
+
+  private constructor(success: boolean, message: string, data: T) {
+    this.success = success;
+    this.message = message;
+    this.data = data;
+  }
 
   static ok<T>(message: string, data: T) {
     return new Result(true, message, data);
