@@ -62,16 +62,6 @@ export class RoomGateway {
     return `Left quiz room ${roomWsId}`;
   }
 
-  @SubscribeMessage('open')
-  async openRoom(@MessageBody() dto: JoinRoomDto) {
-    const res = await this.roomService.openRoom(dto.roomId);
-    if (!res.success) {
-      return res.message;
-    }
-    this.server.to(getRoomWsId(dto.roomId)).emit('room_opened');
-    return 'Room opened';
-  }
-
   @SubscribeMessage('start')
   async startRoom(@MessageBody() dto: JoinRoomDto) {
     const res = await this.roomService.startRoom(dto.roomId);

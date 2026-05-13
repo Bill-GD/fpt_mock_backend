@@ -8,18 +8,18 @@ import {
   Controller,
   ForbiddenException,
   Get,
-  Param,
-  ParseIntPipe,
   HttpStatus,
   NotFoundException,
+  Param,
+  ParseIntPipe,
   Post,
   Query,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { type Response } from 'express';
-import { RoomService } from './room.service';
 import { CreateRoomDto } from './dto/create-room.dto';
+import { RoomService } from './room.service';
 
 @Controller('rooms')
 @UseGuards(AuthenticatedGuard)
@@ -81,5 +81,18 @@ export class RoomController {
       throw new BadRequestException(res.message);
     }
     return ControllerResponse.ok(HttpStatus.CREATED, res);
+  }
+
+  @Post(':id/open')
+  async openRoom(@Param('id', ParseIntPipe) id: number) {
+    const res = await this.roomService.openRoom(id);
+    if (!res.success) {
+      const msg = res.message.toLowerCase();
+      if (msg.includes("doesn't") || msg.includes('not found')) {
+        throw new NotFoundException(res.message);
+      }
+      throw new BadRequestException(res.message);
+    }
+    return ControllerResponse.ok(HttpStatus.NO_CONTENT, res);
   }
 }
