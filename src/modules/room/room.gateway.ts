@@ -47,7 +47,7 @@ export class RoomGateway {
     const roomWsId = getRoomWsId(dto.roomId);
     await client.join(roomWsId);
     if (requester.role === UserRoleEnum.STUDENT) {
-      this.server.to(getRoomWsId(dto.roomId)).emit('student_joined', requester);
+      this.server.to(getRoomWsId(dto.roomId)).emit('student_join', requester);
     }
     return `Joined quiz room ${roomWsId}`;
   }
@@ -69,7 +69,7 @@ export class RoomGateway {
       return res.message;
     }
 
-    this.server.to(getRoomWsId(dto.roomId)).emit('room_started', res.data);
+    this.server.to(getRoomWsId(dto.roomId)).emit('room_start', res.data);
 
     const durationMs = res.data!.durationMinutes * 60 * 1000;
     setTimeout(() => {
@@ -84,7 +84,7 @@ export class RoomGateway {
             if (forceRes.success) {
               this.server
                 .to(getRoomWsId(dto.roomId))
-                .emit('forced_submit', { count: forceRes.data?.count });
+                .emit('force_submit', { count: forceRes.data?.count });
             }
           }
         })
@@ -96,6 +96,7 @@ export class RoomGateway {
     return 'Room started';
   }
 
+  // only submit the answer for individual question
   @SubscribeMessage('answer')
   async studentAnswer(
     @WsRequester() requester: JwtUserPayload,
@@ -111,6 +112,7 @@ export class RoomGateway {
     return 'Student answered';
   }
 
+  // submit the attempt
   @SubscribeMessage('submit')
   async studentSubmit(
     @WsRequester() requester: JwtUserPayload,
