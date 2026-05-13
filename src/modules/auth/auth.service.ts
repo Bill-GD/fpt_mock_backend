@@ -12,7 +12,7 @@ export class AuthService {
   constructor(
     private jwt: JwtService,
     private prisma: PrismaService,
-  ) {}
+  ) { }
 
   async checkEmail(email: string) {
     const emailInUse =

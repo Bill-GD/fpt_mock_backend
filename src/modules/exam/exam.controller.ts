@@ -35,7 +35,7 @@ export class ExamController {
     private readonly examService: ExamService,
     private excelService: ExcelImportService,
     private aiService: AiGenerateService,
-  ) {}
+  ) { }
 
   @Post()
   async create(@RequesterID() requesterId: number, @Body() dto: CreateExamDto) {
@@ -109,5 +109,25 @@ export class ExamController {
       body.difficulty,
       body.quantity,
     );
+  }
+
+  // Thêm vào ExamController
+
+  @Get('statistics/overview')
+  async getOverview(@RequesterID() teacherId: number) {
+    const res = await this.examService.getTeacherStats(teacherId);
+    return ControllerResponse.ok(HttpStatus.OK, res);
+  }
+
+  @Get(':id/statistics/chart')
+  async getChartData(
+    @RequesterID() teacherId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const res = await this.examService.getExamChartData(id, teacherId);
+    if (!res.success) {
+      throw new ForbiddenException(res.message);
+    }
+    return ControllerResponse.ok(HttpStatus.OK, res);
   }
 }
