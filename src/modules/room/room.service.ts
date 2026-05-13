@@ -24,7 +24,6 @@ export class RoomService {
       ATTEMPT_ALREADY_SUBMITTED: 'Attempt already submitted',
       OPTION_NOT_FOUND: 'Option not found',
       ALREADY_ANSWERED: 'Answer already submitted',
-      EXAM_NOT_FOUND: 'Exam not found',
     };
 
     return Result.fail(errorMap[message] || 'An error occurred');
@@ -35,83 +34,113 @@ export class RoomService {
       return Result.fail('examId is required');
     }
 
-    const exam = await this.prisma.exam.findUnique({
-      where: { id: query.examId },
-      select: { id: true, teacherId: true },
-    });
-    if (!exam) {
-      return Result.fail(`Exam #${query.examId} doesn't exist`);
+    try {
+      const [rooms, total] = await this.prisma.$transaction(async (tx) => {
+        const exam = await tx.exam.findUnique({
+          where: { id: query.examId },
+          select: { id: true, teacherId: true },
+        });
+        if (!exam) {
+          throw new Error('EXAM_NOT_FOUND');
+        }
+        if (exam.teacherId !== requesterId) {
+          throw new Error('FORBIDDEN');
+        }
+
+        const where: Prisma.RoomWhereInput = { examId: query.examId };
+
+        if (query.status) {
+          where.status = query.status;
+        }
+
+        if (query.code) {
+          where.code = { contains: query.code, mode: 'insensitive' };
+        }
+
+        const [roomsData, count] = await Promise.all([
+          tx.room.findMany({
+            where,
+            select: {
+              id: true,
+              code: true,
+              status: true,
+              createdAt: true,
+              _count: { select: { attempts: true } },
+            },
+            skip: query.offset,
+            take: query.limit,
+            orderBy: { createdAt: 'desc' },
+          }),
+          tx.room.count({ where }),
+        ]);
+
+        return [roomsData, count];
+      });
+
+      const shaped = rooms.map((r) => ({
+        id: r.id,
+        code: r.code,
+        status: r.status,
+        createdAt: r.createdAt,
+        attemptCount: r._count.attempts,
+      }));
+
+      return Result.ok('Fetched rooms', { rooms: shaped, total });
+    } catch (e) {
+      const error = e as Error;
+      if (error.message === 'EXAM_NOT_FOUND') {
+        return Result.fail(`Exam #${query.examId} doesn't exist`);
+      }
+      if (error.message === 'FORBIDDEN') {
+        return Result.fail(
+          'Forbidden: only owner can view rooms for this exam',
+        );
+      }
+      throw e;
     }
-    if (exam.teacherId !== requesterId) {
-      return Result.fail('Forbidden: only owner can view rooms for this exam');
-    }
-
-    const where: Prisma.RoomWhereInput = { examId: query.examId };
-
-    if (query.status) {
-      where.status = query.status;
-    }
-
-    if (query.code) {
-      where.code = { contains: query.code, mode: 'insensitive' };
-    }
-
-    const [rooms, total] = await Promise.all([
-      this.prisma.room.findMany({
-        where,
-        select: {
-          id: true,
-          code: true,
-          status: true,
-          createdAt: true,
-          _count: { select: { attempts: true } },
-        },
-        skip: query.offset,
-        take: query.limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.room.count({ where }),
-    ]);
-
-    const shaped = rooms.map((r) => ({
-      id: r.id,
-      code: r.code,
-      status: r.status,
-      createdAt: r.createdAt,
-      attemptCount: r._count.attempts,
-    }));
-
-    return Result.ok('Fetched rooms', { rooms: shaped, total });
   }
 
   async createRoom(requesterId: number, dto: CreateRoomDto) {
-    const exam = await this.prisma.exam.findUnique({
-      where: { id: dto.examId },
-      select: { id: true, teacherId: true },
-    });
-    if (!exam) return Result.fail(`Exam #${dto.examId} doesn't exist`);
-    if (exam.teacherId !== requesterId) {
-      return Result.fail(
-        'Forbidden: only owner can create rooms for this exam',
-      );
+    try {
+      const res = await this.prisma.$transaction(async (tx) => {
+        const exam = await tx.exam.findUnique({
+          where: { id: dto.examId },
+          select: { id: true, teacherId: true },
+        });
+        if (!exam) throw new Error('EXAM_NOT_FOUND');
+        if (exam.teacherId !== requesterId) {
+          throw new Error('FORBIDDEN');
+        }
+
+        const pin = this.otpService.generateOTP();
+
+        return tx.room.create({
+          data: {
+            examId: dto.examId,
+            teacherId: requesterId,
+            code: pin,
+            status: RoomStatusEnum.INACTIVE,
+          },
+          select: {
+            id: true,
+            code: true,
+          },
+        });
+      });
+
+      return Result.ok('Created room', res);
+    } catch (e) {
+      const error = e as Error;
+      if (error.message === 'EXAM_NOT_FOUND') {
+        return Result.fail(`Exam #${dto.examId} doesn't exist`);
+      }
+      if (error.message === 'FORBIDDEN') {
+        return Result.fail(
+          'Forbidden: only owner can create rooms for this exam',
+        );
+      }
+      throw e;
     }
-
-    const pin = this.otpService.generateOTP();
-
-    const res = await this.prisma.room.create({
-      data: {
-        examId: dto.examId,
-        teacherId: requesterId,
-        code: pin,
-        status: RoomStatusEnum.INACTIVE,
-      },
-      select: {
-        id: true,
-        code: true,
-      },
-    });
-
-    return Result.ok('Created room', res);
   }
 
   async findOne(requesterId: number, roomId: number) {
