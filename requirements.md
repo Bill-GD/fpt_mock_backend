@@ -44,3 +44,4 @@
   - tab switch
   - copy/paste
   - camera (gesture detection): look away, multiple faces, missing/absent
+  - others (if not yet categorized, use as fallback)
