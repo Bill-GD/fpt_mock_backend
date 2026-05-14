@@ -1,5 +1,4 @@
-import { RequesterID } from '@/common/decorators';
-import { Role } from '@/common/decorators/role.decorator';
+import { RequesterID, Role } from '@/common/decorators';
 import { UserRoleEnum } from '@/common/enums/user-role.enum';
 import { AuthenticatedGuard } from '@/common/guards/authenticated.guard';
 import { RoleGuard } from '@/common/guards/role.guard';

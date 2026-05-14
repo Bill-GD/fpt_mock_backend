@@ -1,5 +1,10 @@
+import { UserRoleEnum } from '@/common/enums/user-role.enum';
 import { JwtUserPayload } from '@/common/utils/types';
-import { BadRequestException, createParamDecorator } from '@nestjs/common';
+import {
+  BadRequestException,
+  createParamDecorator,
+  SetMetadata,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { Socket } from 'socket.io';
 
@@ -21,4 +26,5 @@ export const WsRequester = createParamDecorator((data, context) => {
   return client.data.user as JwtUserPayload;
 });
 
-export * from './role.decorator';
+export const ROLE_KEY = 'roles';
+export const Role = (...roles: UserRoleEnum[]) => SetMetadata(ROLE_KEY, roles);

@@ -2,11 +2,11 @@ import { RoomStatusEnum } from '@/common/enums/room-status.enum';
 import { RoomQuery } from '@/common/queries/room.query';
 import { Result } from '@/common/utils/result';
 import { Prisma } from '@/database/generated/prisma/client';
+import { OtpService } from '@/services/otp.service';
 import { PrismaService } from '@/services/prisma.service';
 import { Injectable } from '@nestjs/common';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { StudentAnswerDto } from './dto/student-answer.dto';
-import { OtpService } from './otp.service';
 
 @Injectable()
 export class RoomService {

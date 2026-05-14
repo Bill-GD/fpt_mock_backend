@@ -1,3 +1,9 @@
+import { RequesterID, Role } from '@/common/decorators';
+import { UserRoleEnum } from '@/common/enums/user-role.enum';
+import { AuthenticatedGuard } from '@/common/guards/authenticated.guard';
+import { RoleGuard } from '@/common/guards/role.guard';
+import { ViolationQuery } from '@/common/queries/violation.query';
+import { ControllerResponse } from '@/common/utils/controller-response';
 import {
   BadRequestException,
   Controller,
@@ -8,12 +14,6 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { Role } from '@/common/decorators/role.decorator';
-import { UserRoleEnum } from '@/common/enums/user-role.enum';
-import { AuthenticatedGuard } from '@/common/guards/authenticated.guard';
-import { RoleGuard } from '@/common/guards/role.guard';
-import { RequesterID } from '@/common/decorators';
-import { ControllerResponse } from '@/common/utils/controller-response';
 import { ViolationService } from './violation.service';
 
 @Controller('violations')
@@ -31,18 +31,16 @@ export class ViolationController {
     return ControllerResponse.ok(HttpStatus.OK, res);
   }
 
-  @Get('student')
+  @Get()
   @Role(UserRoleEnum.TEACHER)
   async listByStudent(
     @RequesterID() teacherId: number,
-    @Query('attemptId') attemptIdStr: string,
+    @Query() query: ViolationQuery,
   ) {
-    const attemptId = parseInt(attemptIdStr, 10);
-    if (isNaN(attemptId)) {
-      throw new BadRequestException('Invalid attemptId');
-    }
-
-    const res = await this.violationService.listByStudent(attemptId, teacherId);
+    const res = await this.violationService.listByStudent(
+      query.attemptId,
+      teacherId,
+    );
     if (!res.success) {
       const msg = res.message.toLowerCase();
       if (msg.includes('forbid')) {

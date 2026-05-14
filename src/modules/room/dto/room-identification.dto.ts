@@ -1,9 +1,9 @@
 import {
   IsNumber,
+  IsOptional,
   IsPositive,
   IsString,
   Length,
-  IsOptional,
 } from 'class-validator';
 
 export class RoomIdentificationDto {
