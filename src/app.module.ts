@@ -8,11 +8,11 @@ import { RoomModule } from './modules/room/room.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
     ProfileModule,
     ExamModule,
     RoomModule,
-    ConfigModule.forRoot({ isGlobal: true }),
   ],
   controllers: [],
   providers: [],

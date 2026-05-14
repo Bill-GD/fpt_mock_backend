@@ -20,3 +20,5 @@ export const WsRequester = createParamDecorator((data, context) => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   return client.data.user as JwtUserPayload;
 });
+
+export * from './role.decorator';

@@ -1,5 +1,8 @@
 import { RequesterID } from '@/common/decorators';
+import { Role } from '@/common/decorators/role.decorator';
+import { UserRoleEnum } from '@/common/enums/user-role.enum';
 import { AuthenticatedGuard } from '@/common/guards/authenticated.guard';
+import { RoleGuard } from '@/common/guards/role.guard';
 import { RoomQuery } from '@/common/queries/room.query';
 import { ControllerResponse } from '@/common/utils/controller-response';
 import {
@@ -21,8 +24,20 @@ import { type Response } from 'express';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { RoomService } from './room.service';
 
+const handleServiceError = (res: { message: string }) => {
+  const msg = res.message.toLowerCase();
+  if (msg.includes('forbid')) {
+    throw new ForbiddenException(res.message);
+  }
+  if (msg.includes("doesn't") || msg.includes('not found')) {
+    throw new NotFoundException(res.message);
+  }
+  throw new BadRequestException(res.message);
+};
+
 @Controller('rooms')
-@UseGuards(AuthenticatedGuard)
+@UseGuards(AuthenticatedGuard, RoleGuard)
+@Role(UserRoleEnum.TEACHER)
 export class RoomController {
   constructor(private readonly roomService: RoomService) {}
 
@@ -34,14 +49,7 @@ export class RoomController {
   ) {
     const res = await this.roomService.findByExam(requesterId, query);
     if (!res.success) {
-      const msg = res.message.toLowerCase();
-      if (msg.includes('forbid')) {
-        throw new ForbiddenException(res.message);
-      }
-      if (msg.includes("doesn't") || msg.includes('not found')) {
-        throw new NotFoundException(res.message);
-      }
-      throw new BadRequestException(res.message);
+      handleServiceError(res);
     }
     response.setHeader('X-Total-Count', `${res.data!.total}`);
     return ControllerResponse.ok(HttpStatus.OK, res);
@@ -54,16 +62,8 @@ export class RoomController {
   ) {
     const res = await this.roomService.findOne(requesterId, id);
     if (!res.success) {
-      const msg = res.message.toLowerCase();
-      if (msg.includes('forbid')) {
-        throw new ForbiddenException(res.message);
-      }
-      if (msg.includes("doesn't") || msg.includes('not found')) {
-        throw new NotFoundException(res.message);
-      }
-      throw new BadRequestException(res.message);
+      handleServiceError(res);
     }
-
     return ControllerResponse.ok(HttpStatus.OK, res);
   }
 
@@ -71,14 +71,7 @@ export class RoomController {
   async create(@RequesterID() requesterId: number, @Body() dto: CreateRoomDto) {
     const res = await this.roomService.createRoom(requesterId, dto);
     if (!res.success) {
-      const msg = res.message.toLowerCase();
-      if (msg.includes('forbid')) {
-        throw new ForbiddenException(res.message);
-      }
-      if (msg.includes("doesn't") || msg.includes('not found')) {
-        throw new NotFoundException(res.message);
-      }
-      throw new BadRequestException(res.message);
+      handleServiceError(res);
     }
     return ControllerResponse.ok(HttpStatus.CREATED, res);
   }
@@ -87,11 +80,7 @@ export class RoomController {
   async openRoom(@Param('id', ParseIntPipe) id: number) {
     const res = await this.roomService.openRoom(id);
     if (!res.success) {
-      const msg = res.message.toLowerCase();
-      if (msg.includes("doesn't") || msg.includes('not found')) {
-        throw new NotFoundException(res.message);
-      }
-      throw new BadRequestException(res.message);
+      handleServiceError(res);
     }
     return ControllerResponse.ok(HttpStatus.NO_CONTENT, res);
   }

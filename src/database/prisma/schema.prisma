@@ -116,7 +116,7 @@ model ViolationLog {
   studentId     Int           @map("student_id")
   violationType ViolationType @map("violation_type")
   evidenceUrl   String?       @map("evidence_url")
-  timestamp     DateTime
+  timestamp     DateTime      @default(now())
 
   @@map("violation_logs")
 }
