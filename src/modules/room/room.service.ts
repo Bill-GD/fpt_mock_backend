@@ -399,4 +399,11 @@ export class RoomService {
 
     return Result.ok('Attempt submitted', {});
   }
+
+  async findRoomByCode(code: string) {
+    return this.prisma.room.findUnique({
+      where: { code },
+      select: { id: true },
+    });
+  }
 }

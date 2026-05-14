@@ -14,9 +14,11 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { JoinRoomDto } from './dto/join-room.dto';
+import { RoomIdentificationDto } from './dto/room-code.dto';
 import { StudentAnswerDto } from './dto/student-answer.dto';
 import { RoomService } from './room.service';
+import { ViolationService } from '@/modules/violation/violation.service';
+import { StudentViolationDto } from '@/modules/violation/dto/student-violation.dto';
 
 @WebSocketGateway({
   namespace: 'roomws',
@@ -30,24 +32,31 @@ import { RoomService } from './room.service';
 export class RoomGateway {
   @WebSocketServer() private server: Server;
 
-  constructor(private readonly roomService: RoomService) {}
+  constructor(
+    private readonly roomService: RoomService,
+    private readonly violationService: ViolationService,
+  ) {}
 
   @SubscribeMessage('join')
   async joinQuizRoom(
     @WsRequester() requester: JwtUserPayload,
     @ConnectedSocket() client: Socket,
-    @MessageBody() dto: JoinRoomDto,
+    @MessageBody() dto: RoomIdentificationDto,
   ) {
-    const status = await this.roomService.getRoomStatus(dto.roomId);
+    const room = await this.roomService.findRoomByCode(dto.code!);
+    if (!room) {
+      return 'Room not found';
+    }
 
+    const status = await this.roomService.getRoomStatus(room.id);
     if (!status || (status as any) !== RoomStatusEnum.WAITING) {
       return 'Room is not open for joining';
     }
 
-    const roomWsId = getRoomWsId(dto.roomId);
+    const roomWsId = getRoomWsId(room.id);
     await client.join(roomWsId);
     if (requester.role === UserRoleEnum.STUDENT) {
-      this.server.to(getRoomWsId(dto.roomId)).emit('student_join', requester);
+      this.server.to(roomWsId).emit('student_join', requester);
     }
     return `Joined quiz room ${roomWsId}`;
   }
@@ -55,41 +64,42 @@ export class RoomGateway {
   @SubscribeMessage('leave')
   async leaveQuizRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() dto: JoinRoomDto,
+    @MessageBody() dto: RoomIdentificationDto,
   ) {
-    const roomWsId = getRoomWsId(dto.roomId);
+    const roomWsId = getRoomWsId(dto.id);
     await client.leave(roomWsId);
     return `Left quiz room ${roomWsId}`;
   }
 
   @SubscribeMessage('start')
-  async startRoom(@MessageBody() dto: JoinRoomDto) {
-    const res = await this.roomService.startRoom(dto.roomId);
+  async startRoom(@MessageBody() dto: RoomIdentificationDto) {
+    const res = await this.roomService.startRoom(dto.id);
     if (!res.success) {
       return res.message;
     }
 
-    this.server.to(getRoomWsId(dto.roomId)).emit('room_start', res.data);
+    const roomWsId = getRoomWsId(dto.id);
+    this.server.to(roomWsId).emit('room_start', res.data);
 
     const durationMs = res.data!.durationMinutes * 60 * 1000;
     setTimeout(() => {
       this.roomService
-        .endRoom(dto.roomId)
+        .endRoom(dto.id)
         .then(async (endRes) => {
           if (endRes.success) {
             const forceRes = await this.roomService.forceSubmitAllAttempts(
-              dto.roomId,
+              dto.id,
             );
-            this.server.to(getRoomWsId(dto.roomId)).emit('room_time_up');
+            this.server.to(roomWsId).emit('room_time_up');
             if (forceRes.success) {
               this.server
-                .to(getRoomWsId(dto.roomId))
+                .to(roomWsId)
                 .emit('force_submit', { count: forceRes.data?.count });
             }
           }
         })
         .catch((e) => {
-          console.error(`Failed to end room #${dto.roomId}:`, e);
+          console.error(`Failed to end room #${dto.id}:`, e);
         });
     }, durationMs);
 
@@ -126,5 +136,24 @@ export class RoomGateway {
       .to(getRoomWsId(dto.roomId))
       .emit('student_submit', { student: requester });
     return 'Student submitted';
+  }
+
+  @SubscribeMessage('violation')
+  async reportViolation(
+    @WsRequester() requester: JwtUserPayload,
+    @MessageBody() dto: StudentViolationDto,
+  ) {
+    const res = await this.violationService.logViolation(
+      requester.id,
+      dto.attemptId,
+      dto,
+    );
+    if (!res.success) {
+      return res.message;
+    }
+    this.server
+      .to(getRoomWsId(dto.roomId))
+      .emit('log_violation', { student: requester, ...res.data });
+    return 'Violation logged';
   }
 }
