@@ -1,3 +1,5 @@
+import { ROLE_KEY } from '@/common/decorators';
+import { UserRoleEnum } from '@/common/enums/user-role.enum';
 import {
   CanActivate,
   ExecutionContext,
@@ -5,8 +7,6 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ROLE_KEY } from '@/common/decorators/role.decorator';
-import { UserRoleEnum } from '@/common/enums/user-role.enum';
 import type { Request } from 'express';
 
 @Injectable()

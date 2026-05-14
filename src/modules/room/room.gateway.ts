@@ -1,6 +1,6 @@
 import { WsRequester } from '@/common/decorators';
-import { UserRoleEnum } from '@/common/enums/user-role.enum';
 import { RoomStatusEnum } from '@/common/enums/room-status.enum';
+import { UserRoleEnum } from '@/common/enums/user-role.enum';
 import { WebSocketFilter } from '@/common/filters/web-socket.filter';
 import { WsAuthenticatedGuard } from '@/common/guards/authenticated.ws.guard';
 import { getRoomWsId } from '@/common/utils/helpers';
@@ -14,11 +14,11 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { RoomIdentificationDto } from './dto/room-code.dto';
+import { StudentViolationDto } from '../violation/dto/student-violation.dto';
+import { ViolationService } from '../violation/violation.service';
+import { RoomIdentificationDto } from './dto/room-identification.dto';
 import { StudentAnswerDto } from './dto/student-answer.dto';
 import { RoomService } from './room.service';
-import { ViolationService } from '@/modules/violation/violation.service';
-import { StudentViolationDto } from '@/modules/violation/dto/student-violation.dto';
 
 @WebSocketGateway({
   namespace: 'roomws',
