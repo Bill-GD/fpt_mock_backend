@@ -144,6 +144,7 @@ enum ViolationType {
   CAMERA_MULTIPLE_FACES @map("camera_multiple_faces")
   CAMERA_GAZE_AWAY      @map("camera_gaze_away")
   CAMERA_MISSING        @map("camera_missing")
+  OTHER                 @map("other")
 
   @@map("violation_type_enum")
 }
