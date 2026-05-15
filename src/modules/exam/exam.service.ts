@@ -163,7 +163,6 @@ export class ExamService {
 
     const attempts = await this.prisma.attempt.findMany({
       where: { room: { examId } },
-      select: { score: true },
     });
 
     // Phân loại phổ điểm để FE vẽ Bar Chart
@@ -174,12 +173,13 @@ export class ExamService {
       '76-100': 0,
     };
 
-    attempts.forEach((a) => {
-      if (a.score <= 25) chartData['0-25']++;
-      else if (a.score <= 50) chartData['26-50']++;
-      else if (a.score <= 75) chartData['51-75']++;
-      else chartData['76-100']++;
-    });
+    // corect count / total quétion
+    // attempts.forEach((a) => {
+    //   if (a.score <= 25) chartData['0-25']++;
+    //   else if (a.score <= 50) chartData['26-50']++;
+    //   else if (a.score <= 75) chartData['51-75']++;
+    //   else chartData['76-100']++;
+    // });
 
     return Result.ok('Fetched chart data', chartData);
   }

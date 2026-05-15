@@ -53,21 +53,6 @@ export class RoomController {
     response.setHeader('X-Total-Count', `${res.data!.total}`);
     return ControllerResponse.ok(HttpStatus.OK, res);
   }
-  @Post()
-  async createRoom(
-    @RequesterID() requesterId: number,
-    @Body('examId') examId: number,
-  ) {
-    if (!examId) throw new BadRequestException('examId is required');
-    const res = await this.roomService.createRoom(requesterId, examId);
-    if (!res.success) {
-      if (res.message.toLowerCase().includes('forbid')) {
-        throw new ForbiddenException(res.message);
-      }
-      throw new BadRequestException(res.message);
-    }
-    return ControllerResponse.ok(HttpStatus.CREATED, res);
-  }
 
   @Get('history')
   async getStudentHistory(

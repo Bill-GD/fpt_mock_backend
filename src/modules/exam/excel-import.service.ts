@@ -36,21 +36,28 @@ export class ExcelImportService {
       const row = rows[index];
       const rowNumber = index + 2; // Dòng 1 là Header trong Excel
 
-      const content = row['Nội dung câu hỏi'];
+      const content = row['content'];
       if (!content || String(content).trim() === '') {
         throw new BadRequestException(`Lỗi dòng ${rowNumber}: Thiếu nội dung câu hỏi!`);
       }
 
       // Nhóm các đáp án lại để dễ xử lý vòng lặp
       const rawOptions = [
-        { label: 'A' as const, value: row['Đáp án A'] },
-        { label: 'B' as const, value: row['Đáp án B'] },
-        { label: 'C' as const, value: row['Đáp án C'] },
-        { label: 'D' as const, value: row['Đáp án D'] },
+        { label: 'A' as const, value: row['A'] },
+        { label: 'B' as const, value: row['B'] },
+        { label: 'C' as const, value: row['C'] },
+        { label: 'D' as const, value: row['D'] },
       ];
 
       const parsedOptions: ParsedOption[] = [];
       let hasCorrectAnswer = false;
+
+      // Lấy đáp án đúng từ cột "answer" (ví dụ: A, B, C, D)
+      const correctAnswerRaw = row['answer'];
+      if (!correctAnswerRaw || String(correctAnswerRaw).trim() === '') {
+        throw new BadRequestException(`Lỗi dòng ${rowNumber}: Thiếu đáp án đúng!`);
+      }
+      const correctAnswerLetter = String(correctAnswerRaw).trim().toUpperCase();
 
       for (const opt of rawOptions) {
         // Bỏ qua nếu cột đáp án bị trống
