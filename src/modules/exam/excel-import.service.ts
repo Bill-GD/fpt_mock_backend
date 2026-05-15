@@ -19,7 +19,7 @@ export class ExcelImportService {
 
     // 2. Đọc file Excel
     const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-    const rows = xlsx.utils.sheet_to_json<RawExcelRow>(
+    const rows = xlsx.utils.sheet_to_json<any>( // Tạm để any hoặc bạn tự cập nhật lại interface RawExcelRow
       workbook.Sheets[workbook.SheetNames[0]],
       // defval: null giúp các ô trống không bị undefined mà sẽ là null
       { defval: null }
@@ -58,18 +58,13 @@ export class ExcelImportService {
           continue;
         }
 
-        let text = String(opt.value).trim();
-        let isCorrect = false;
+        const text = String(opt.value).trim();
 
-        // Tìm dấu * ở đầu hoặc cuối
-        if (text.startsWith('*')) {
-          isCorrect = true;
+        // So sánh nhãn của đáp án hiện tại (A/B/C/D) với giá trị ở cột answer
+        const isCorrect = (opt.label === correctAnswerLetter);
+
+        if (isCorrect) {
           hasCorrectAnswer = true;
-          text = text.substring(1).trim();
-        } else if (text.endsWith('*')) {
-          isCorrect = true;
-          hasCorrectAnswer = true;
-          text = text.slice(0, -1).trim();
         }
 
         parsedOptions.push({
@@ -99,17 +94,13 @@ export class ExcelImportService {
     // 4. Lưu vào Database bằng Transaction
     try {
       await this.prisma.$transaction(async (tx) => {
-        // Đã xóa phần query lastQuestion và orderIndex
-
         for (const q of questionsToInsert) {
           await tx.question.create({
             data: {
               examId: examId,
               content: q.content,
-              // Đã xóa trường orderIndex ở đây
               options: {
                 create: q.options.map((o) => ({
-                  // Đã xóa trường label ở đây để khớp với model Option
                   content: o.content,
                   isCorrect: o.isCorrect
                 })),

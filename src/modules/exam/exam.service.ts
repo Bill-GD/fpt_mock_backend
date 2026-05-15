@@ -8,7 +8,7 @@ import { UpdateExamDto } from './dto/update-exam.dto';
 
 @Injectable()
 export class ExamService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(requesterId: number, dto: CreateExamDto) {
     const questions = dto.questions;
@@ -121,4 +121,67 @@ export class ExamService {
 
     return Result.ok('Updated exam', { id: updated.id });
   }
+
+  // Thêm vào ExamService
+  async getTeacherStats(teacherId: number) {
+    const [examCount, totalAttempts, totalViolations] = await Promise.all([
+      this.prisma.exam.count({ where: { teacherId } }),
+      this.prisma.attempt.count({ where: { room: { teacherId } } }),
+      this.prisma.violationLog.count({ where: { attempt: { room: { teacherId } } } }),
+    ]);
+
+    // Đếm số lượng bài thi có ít nhất 1 lỗi vi phạm để tính tỷ lệ
+    const attemptsWithViolation = await this.prisma.attempt.count({
+      where: {
+        room: { teacherId },
+        violations: { some: {} },
+      },
+    });
+
+    const violationRate = totalAttempts > 0
+      ? (attemptsWithViolation / totalAttempts) * 100
+      : 0;
+
+    return Result.ok('Fetched teacher statistics', {
+      totalExams: examCount,
+      totalAttempts,
+      totalViolations,
+      violationRate: parseFloat(violationRate.toFixed(2)),
+    });
+  }
+
+  async getExamChartData(examId: number, teacherId: number) {
+    // Kiểm tra quyền sở hữu bài thi trước khi xem thống kê
+    const exam = await this.prisma.exam.findUnique({
+      where: { id: examId },
+      select: { teacherId: true }
+    });
+
+    if (!exam || exam.teacherId !== teacherId) {
+      return Result.fail('Forbidden: You do not have access to this exam data');
+    }
+
+    const attempts = await this.prisma.attempt.findMany({
+      where: { room: { examId } },
+      select: { score: true },
+    });
+
+    // Phân loại phổ điểm để FE vẽ Bar Chart
+    const chartData = {
+      '0-25': 0,
+      '26-50': 0,
+      '51-75': 0,
+      '76-100': 0,
+    };
+
+    attempts.forEach((a) => {
+      if (a.score <= 25) chartData['0-25']++;
+      else if (a.score <= 50) chartData['26-50']++;
+      else if (a.score <= 75) chartData['51-75']++;
+      else chartData['76-100']++;
+    });
+
+    return Result.ok('Fetched chart data', chartData);
+  }
+
 }
