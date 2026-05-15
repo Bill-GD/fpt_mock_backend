@@ -24,6 +24,6 @@ export class CreateExamDto {
   durationMinutes: number;
 
   @IsArray()
-  @ArrayNotEmpty()
-  questions: Question[];
+  @IsOptional()
+  questions?: Question[];
 }

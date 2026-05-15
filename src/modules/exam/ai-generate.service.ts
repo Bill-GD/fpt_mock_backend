@@ -59,7 +59,8 @@ export class AiGenerateService {
 
     } catch (error) {
       console.error('Lỗi GenAI Service:', error);
-      return Result.fail('Hệ thống AI đang quá tải hoặc gặp lỗi khi lưu dữ liệu!');
+      const errMsg = error instanceof Error ? error.message : String(error);
+      return Result.fail(`Lỗi GenAI: ${errMsg}`);
     }
   }
 
@@ -67,7 +68,7 @@ export class AiGenerateService {
   private async fetchFromAI(topic: string, difficulty: string, quantity: number) {
     // Dùng model gemini-1.5-flash vì nó tối ưu cho tốc độ và các task sinh JSON
     const model = this.genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         responseMimeType: 'application/json', // Tính năng xịn: Ép AI chỉ trả về text định dạng JSON
       },

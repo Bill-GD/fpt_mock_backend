@@ -42,14 +42,17 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email },
     });
-
+    console.log("user", user);
     if (!user) {
+      console.log("user ko ton tai");
       return Result.fail("Email doesn't exist");
     }
     if (!bcrypt.compareSync(dto.password, user.password)) {
+      console.log("sai mat khau");
       return Result.fail('Incorrect password');
     }
 
@@ -60,6 +63,8 @@ export class AuthService {
       role: user.role.toLowerCase() as JwtUserPayload['role'],
     };
 
+    console.log("payload", payload);
+    console.log("token", this.jwt.sign(payload, { expiresIn: '1d' }));
     return Result.ok('Login successfully', {
       token: this.jwt.sign(payload, { expiresIn: '1d' }),
     });
