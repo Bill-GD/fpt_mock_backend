@@ -13,7 +13,7 @@ export class RoomService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly otpService: OtpService,
-  ) {}
+  ) { }
 
   private handleError(error: Error) {
     const message = error.message;
@@ -437,6 +437,7 @@ export class RoomService {
       examTitle: a.room.exam.title,
       durationMinutes: a.room.exam.durationMinutes,
       roomCode: a.room.code,
+      correctCount: a.correctCount,
       submittedAt: a.submittedAt,
       violationCount: a._count.violations,
     }));

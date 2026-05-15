@@ -154,32 +154,30 @@ export class ExamService {
     // Kiểm tra quyền sở hữu bài thi trước khi xem thống kê
     const exam = await this.prisma.exam.findUnique({
       where: { id: examId },
-      select: { teacherId: true }
+      include: { _count: { select: { questions: true } } }
     });
 
     if (!exam || exam.teacherId !== teacherId) {
       return Result.fail('Forbidden: You do not have access to this exam data');
     }
 
+    const totalQuestions = exam._count.questions;
+    if (totalQuestions === 0) {
+      return Result.ok('Fetched chart data', chartData);
+    }
+
     const attempts = await this.prisma.attempt.findMany({
       where: { room: { examId } },
+      select: { correctCount: true }
     });
 
-    // Phân loại phổ điểm để FE vẽ Bar Chart
-    const chartData = {
-      '0-25': 0,
-      '26-50': 0,
-      '51-75': 0,
-      '76-100': 0,
-    };
-
-    // corect count / total quétion
-    // attempts.forEach((a) => {
-    //   if (a.score <= 25) chartData['0-25']++;
-    //   else if (a.score <= 50) chartData['26-50']++;
-    //   else if (a.score <= 75) chartData['51-75']++;
-    //   else chartData['76-100']++;
-    // });
+    attempts.forEach((a) => {
+      const score = (a.correctCount / totalQuestions) * 100;
+      if (score <= 25) chartData['0-25']++;
+      else if (score <= 50) chartData['26-50']++;
+      else if (score <= 75) chartData['51-75']++;
+      else chartData['76-100']++;
+    });
 
     return Result.ok('Fetched chart data', chartData);
   }
