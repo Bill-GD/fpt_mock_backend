@@ -1,17 +1,22 @@
 import { ControllerResponse } from '@/common/utils/controller-response';
+import { JwtUserPayload } from '@/common/utils/types';
 import {
   Body,
   ConflictException,
   Controller,
+  Get,
   HttpStatus,
   Post,
+  Req,
   Res,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
-import { type Response } from 'express';
+import { type Request, type Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { AuthenticatedGuard } from '@/common/guards/authenticated.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -53,5 +58,17 @@ export class AuthController {
       'Logged out successfully',
       null,
     );
+  }
+
+  @Get('me')
+  @UseGuards(AuthenticatedGuard)
+  getMe(@Req() req: Request) {
+    const user = req.authUser as JwtUserPayload;
+    return ControllerResponse.ok(HttpStatus.OK, 'User retrieved', {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+    });
   }
 }

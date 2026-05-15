@@ -161,25 +161,25 @@ export class ExamService {
       return Result.fail('Forbidden: You do not have access to this exam data');
     }
 
-    const totalQuestions = exam._count.questions;
-    if (totalQuestions === 0) {
-      return Result.ok('Fetched chart data', chartData);
-    }
+    // const totalQuestions = exam._count.questions;
+    // if (totalQuestions === 0) {
+    //   return Result.ok('Fetched chart data', chartData);
+    // }
 
-    const attempts = await this.prisma.attempt.findMany({
-      where: { room: { examId } },
-      select: { correctCount: true }
-    });
+    // const attempts = await this.prisma.attempt.findMany({
+    //   where: { room: { examId } },
+    //   select: { correctCount: true }
+    // });
 
-    attempts.forEach((a) => {
-      const score = (a.correctCount / totalQuestions) * 100;
-      if (score <= 25) chartData['0-25']++;
-      else if (score <= 50) chartData['26-50']++;
-      else if (score <= 75) chartData['51-75']++;
-      else chartData['76-100']++;
-    });
+    // attempts.forEach((a) => {
+    //   const score = (a.correctCount / totalQuestions) * 100;
+    //   if (score <= 25) chartData['0-25']++;
+    //   else if (score <= 50) chartData['26-50']++;
+    //   else if (score <= 75) chartData['51-75']++;
+    //   else chartData['76-100']++;
+    // });
 
-    return Result.ok('Fetched chart data', chartData);
+    return Result.ok('Fetched chart data', {});
   }
 
 }

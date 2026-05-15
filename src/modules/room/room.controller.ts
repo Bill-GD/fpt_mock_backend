@@ -35,12 +35,22 @@ const handleServiceError = (res: { message: string }) => {
 };
 
 @Controller('rooms')
-@UseGuards(AuthenticatedGuard, RoleGuard)
-@Role(UserRoleEnum.TEACHER)
 export class RoomController {
   constructor(private readonly roomService: RoomService) {}
 
+  // Public endpoint — no auth needed, student uses to lookup room by PIN
+  @Get('public/:code')
+  async findByCode(@Param('code') code: string) {
+    const res = await this.roomService.findRoomInfoByCode(code);
+    if (!res) {
+      throw new NotFoundException(`Room with code "${code}" not found`);
+    }
+    return ControllerResponse.ok(HttpStatus.OK, 'Room found', res);
+  }
+
   @Get()
+  @UseGuards(AuthenticatedGuard, RoleGuard)
+  @Role(UserRoleEnum.TEACHER)
   async findByExam(
     @Res({ passthrough: true }) response: Response,
     @RequesterID() requesterId: number,
@@ -55,6 +65,7 @@ export class RoomController {
   }
 
   @Get('history')
+  @UseGuards(AuthenticatedGuard)
   async getStudentHistory(
     @Res({ passthrough: true }) response: Response,
     @RequesterID() studentId: number,
@@ -74,6 +85,8 @@ export class RoomController {
   }
 
   @Get(':id')
+  @UseGuards(AuthenticatedGuard, RoleGuard)
+  @Role(UserRoleEnum.TEACHER)
   async findOne(
     @RequesterID() requesterId: number,
     @Param('id', ParseIntPipe) id: number,
@@ -86,6 +99,8 @@ export class RoomController {
   }
 
   @Post()
+  @UseGuards(AuthenticatedGuard, RoleGuard)
+  @Role(UserRoleEnum.TEACHER)
   async create(@RequesterID() requesterId: number, @Body() dto: CreateRoomDto) {
     const res = await this.roomService.createRoom(requesterId, dto);
     if (!res.success) {
@@ -95,6 +110,8 @@ export class RoomController {
   }
 
   @Post(':id/open')
+  @UseGuards(AuthenticatedGuard, RoleGuard)
+  @Role(UserRoleEnum.TEACHER)
   async openRoom(@Param('id', ParseIntPipe) id: number) {
     const res = await this.roomService.openRoom(id);
     if (!res.success) {

@@ -401,10 +401,33 @@ export class RoomService {
   }
 
   async findRoomByCode(code: string) {
-    return this.prisma.room.findUnique({
-      where: { code },
+    return this.prisma.room.findFirst({
+      where: { code: { equals: code, mode: 'insensitive' } },
       select: { id: true },
     });
+  }
+
+  async findRoomInfoByCode(code: string) {
+    const room = await this.prisma.room.findFirst({
+      where: { code: { equals: code, mode: 'insensitive' } },
+      select: {
+        id: true,
+        code: true,
+        status: true,
+        createdAt: true,
+        exam: { select: { id: true, title: true, durationMinutes: true } },
+      },
+    });
+    if (!room) return null;
+    return {
+      id: room.id,
+      code: room.code,
+      status: room.status,
+      createdAt: room.createdAt,
+      examId: room.exam.id,
+      examTitle: room.exam.title,
+      durationMinutes: room.exam.durationMinutes,
+    };
   }
 
   async getStudentHistory(

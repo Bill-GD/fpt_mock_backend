@@ -25,8 +25,10 @@ export class RoleGuard implements CanActivate {
 
     const req = context.switchToHttp().getRequest<Request>();
     const user = req.authUser;
+    const userRoleLower = user?.role?.toLowerCase();
+    const requiredRolesLower = requiredRoles.map((r) => r.toLowerCase());
 
-    if (!user || !requiredRoles.includes(user.role)) {
+    if (!user || !requiredRolesLower.includes(userRoleLower ?? '')) {
       throw new ForbiddenException(
         `Only ${requiredRoles.join(' or ')} can access this resource`,
       );
