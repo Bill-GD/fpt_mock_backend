@@ -15,7 +15,7 @@ import { RegisterDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('register')
   async register(@Body() dto: RegisterDto) {
@@ -28,7 +28,8 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto, @Res() response: Response) {
+  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
+    console.log("vao controller");
     const res = await this.authService.login(dto);
     if (!res.success) throw new UnauthorizedException(res.message);
     response.cookie('jwt', res.data?.token, {

@@ -11,7 +11,7 @@ export class ExamService {
   constructor(private readonly prisma: PrismaService) { }
 
   async create(requesterId: number, dto: CreateExamDto) {
-    const questions = dto.questions;
+    const questions = dto.questions ?? [];
 
     const { id: examId } = await this.prisma.exam.create({
       data: {

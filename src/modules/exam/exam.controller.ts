@@ -21,6 +21,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { type Response } from 'express';
 import { AiGenerateService } from './ai-generate.service';
 import { CreateExamDto } from './dto/create-exam.dto';
@@ -89,13 +90,17 @@ export class ExamController {
   }
 
   @Post(':id/import-excel')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async importExcel(
     @Param('id', ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return this.excelService.importQuestions(id, file.buffer);
+    const res = await this.excelService.importQuestions(id, file.buffer);
+    if (!res.success) {
+      throw new BadRequestException(res.message);
+    }
+    return ControllerResponse.ok(HttpStatus.OK, res);
   }
 
   @Post(':id/generate-ai')
@@ -103,12 +108,16 @@ export class ExamController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { topic: string; difficulty: string; quantity: number },
   ) {
-    return this.aiService.generateQuestions(
+    const res = await this.aiService.generateQuestions(
       id,
       body.topic,
       body.difficulty,
       body.quantity,
     );
+    if (!res.success) {
+      throw new BadRequestException(res.message);
+    }
+    return ControllerResponse.ok(HttpStatus.OK, res);
   }
 
   // Thêm vào ExamController
