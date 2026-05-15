@@ -36,19 +36,31 @@ export class ExcelImportService {
       const row = rows[index];
       const rowNumber = index + 2; // Dòng 1 là Header trong Excel
 
-      const content = row['Nội dung câu hỏi'];
+      // Lấy theo tên cột mới
+      const content = row['content'];
       if (!content || String(content).trim() === '') {
         throw new BadRequestException(
-          `Lỗi dòng ${rowNumber}: Thiếu nội dung câu hỏi!`,
+          `Lỗi dòng ${rowNumber}: Thiếu nội dung câu hỏi (cột 'content')!`,
         );
       }
 
+      // Lấy đáp án đúng từ cột answer
+      const answerVal = row['answer'];
+      if (!answerVal || String(answerVal).trim() === '') {
+        throw new BadRequestException(
+          `Lỗi dòng ${rowNumber}: Thiếu đáp án đúng (cột 'answer')!`,
+        );
+      }
+
+      // Chuyển về in hoa để dễ so sánh (vd: 'a' -> 'A')
+      const correctAnswerLetter = String(answerVal).trim().toUpperCase();
+
       // Nhóm các đáp án lại để dễ xử lý vòng lặp
       const rawOptions = [
-        { label: 'A' as const, value: row['Đáp án A'] },
-        { label: 'B' as const, value: row['Đáp án B'] },
-        { label: 'C' as const, value: row['Đáp án C'] },
-        { label: 'D' as const, value: row['Đáp án D'] },
+        { label: 'A' as const, value: row['A'] },
+        { label: 'B' as const, value: row['B'] },
+        { label: 'C' as const, value: row['C'] },
+        { label: 'D' as const, value: row['D'] },
       ];
 
       const parsedOptions: ParsedOption[] = [];
@@ -60,18 +72,13 @@ export class ExcelImportService {
           continue;
         }
 
-        let text = String(opt.value).trim();
-        let isCorrect = false;
+        const text = String(opt.value).trim();
 
-        // Tìm dấu * ở đầu hoặc cuối
-        if (text.startsWith('*')) {
-          isCorrect = true;
+        // So sánh nhãn của đáp án hiện tại (A/B/C/D) với giá trị ở cột answer
+        const isCorrect = opt.label === correctAnswerLetter;
+
+        if (isCorrect) {
           hasCorrectAnswer = true;
-          text = text.substring(1).trim();
-        } else if (text.endsWith('*')) {
-          isCorrect = true;
-          hasCorrectAnswer = true;
-          text = text.slice(0, -1).trim();
         }
 
         parsedOptions.push({
@@ -90,7 +97,7 @@ export class ExcelImportService {
 
       if (!hasCorrectAnswer) {
         throw new BadRequestException(
-          `Lỗi dòng ${rowNumber}: Không tìm thấy đáp án đúng. Vui lòng thêm dấu '*' vào trước hoặc sau đáp án đúng!`,
+          `Lỗi dòng ${rowNumber}: Đáp án đúng '${correctAnswerLetter}' không khớp với bất kỳ cột đáp án nào có dữ liệu!`,
         );
       }
 
@@ -103,17 +110,13 @@ export class ExcelImportService {
     // 4. Lưu vào Database bằng Transaction
     try {
       await this.prisma.$transaction(async (tx) => {
-        // Đã xóa phần query lastQuestion và orderIndex
-
         for (const q of questionsToInsert) {
           await tx.question.create({
             data: {
               examId: examId,
               content: q.content,
-              // Đã xóa trường orderIndex ở đây
               options: {
                 create: q.options.map((o) => ({
-                  // Đã xóa trường label ở đây để khớp với model Option
                   content: o.content,
                   isCorrect: o.isCorrect,
                 })),
