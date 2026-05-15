@@ -36,27 +36,17 @@ export class ExcelImportService {
       const row = rows[index];
       const rowNumber = index + 2; // Dòng 1 là Header trong Excel
 
-      // Lấy theo tên cột mới
-      const content = row['content'];
+      const content = row['Nội dung câu hỏi'];
       if (!content || String(content).trim() === '') {
-        throw new BadRequestException(`Lỗi dòng ${rowNumber}: Thiếu nội dung câu hỏi (cột 'content')!`);
+        throw new BadRequestException(`Lỗi dòng ${rowNumber}: Thiếu nội dung câu hỏi!`);
       }
-
-      // Lấy đáp án đúng từ cột answer
-      const answerVal = row['answer'];
-      if (!answerVal || String(answerVal).trim() === '') {
-        throw new BadRequestException(`Lỗi dòng ${rowNumber}: Thiếu đáp án đúng (cột 'answer')!`);
-      }
-
-      // Chuyển về in hoa để dễ so sánh (vd: 'a' -> 'A')
-      const correctAnswerLetter = String(answerVal).trim().toUpperCase();
 
       // Nhóm các đáp án lại để dễ xử lý vòng lặp
       const rawOptions = [
-        { label: 'A' as const, value: row['A'] },
-        { label: 'B' as const, value: row['B'] },
-        { label: 'C' as const, value: row['C'] },
-        { label: 'D' as const, value: row['D'] },
+        { label: 'A' as const, value: row['Đáp án A'] },
+        { label: 'B' as const, value: row['Đáp án B'] },
+        { label: 'C' as const, value: row['Đáp án C'] },
+        { label: 'D' as const, value: row['Đáp án D'] },
       ];
 
       const parsedOptions: ParsedOption[] = [];
@@ -91,7 +81,7 @@ export class ExcelImportService {
 
       if (!hasCorrectAnswer) {
         throw new BadRequestException(
-          `Lỗi dòng ${rowNumber}: Đáp án đúng '${correctAnswerLetter}' không khớp với bất kỳ cột đáp án nào có dữ liệu!`
+          `Lỗi dòng ${rowNumber}: Không tìm thấy đáp án đúng. Vui lòng thêm dấu '*' vào trước hoặc sau đáp án đúng!`
         );
       }
 

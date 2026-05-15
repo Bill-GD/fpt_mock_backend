@@ -71,7 +71,7 @@ model Room {
   examId    Int        @map("exam_id")
   teacher   User       @relation("teacher_rooms", fields: [teacherId], references: [id])
   teacherId Int        @map("teacher_id")
-  startedAt DateTime   @map("started_at")
+  startedAt DateTime?  @map("started_at")
   code      String     @unique @db.VarChar(8)
   status    RoomStatus @default(INACTIVE)
   createdAt DateTime   @default(now()) @map("created_at")
@@ -89,7 +89,6 @@ model Attempt {
   studentId    Int       @map("student_id")
   submittedAt  DateTime? @map("submitted_at")
   correctCount Int       @default(0) @map("correct_count")
-  score        Int       @default(0)
 
   answers    Answer[]
   violations ViolationLog[]
@@ -117,7 +116,7 @@ model ViolationLog {
   studentId     Int           @map("student_id")
   violationType ViolationType @map("violation_type")
   evidenceUrl   String?       @map("evidence_url")
-  timestamp     DateTime
+  timestamp     DateTime      @default(now())
 
   @@map("violation_logs")
 }
@@ -145,6 +144,7 @@ enum ViolationType {
   CAMERA_MULTIPLE_FACES @map("camera_multiple_faces")
   CAMERA_GAZE_AWAY      @map("camera_gaze_away")
   CAMERA_MISSING        @map("camera_missing")
+  OTHER                 @map("other")
 
   @@map("violation_type_enum")
 }
