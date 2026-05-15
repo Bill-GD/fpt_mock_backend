@@ -36,7 +36,6 @@ export class ExcelImportService {
       const row = rows[index];
       const rowNumber = index + 2; // Dòng 1 là Header trong Excel
 
-      // Lấy theo tên cột mới
       const content = row['content'];
       if (!content || String(content).trim() === '') {
         throw new BadRequestException(
@@ -65,6 +64,15 @@ export class ExcelImportService {
 
       const parsedOptions: ParsedOption[] = [];
       let hasCorrectAnswer = false;
+
+      // Lấy đáp án đúng từ cột "answer" (ví dụ: A, B, C, D)
+      const correctAnswerRaw = row['answer'];
+      if (!correctAnswerRaw || String(correctAnswerRaw).trim() === '') {
+        throw new BadRequestException(
+          `Lỗi dòng ${rowNumber}: Thiếu đáp án đúng!`,
+        );
+      }
+      const correctAnswerLetter = String(correctAnswerRaw).trim().toUpperCase();
 
       for (const opt of rawOptions) {
         // Bỏ qua nếu cột đáp án bị trống
