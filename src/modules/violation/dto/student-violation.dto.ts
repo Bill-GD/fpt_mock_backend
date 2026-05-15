@@ -14,10 +14,22 @@ export class StudentViolationDto {
 
   @IsNumber()
   @IsPositive()
-  attemptId: number;
+  @IsOptional()
+  attemptId?: number;
+
+  // Frontend sends "type" field (maps to violationType)
+  @IsString()
+  @IsOptional()
+  type?: string;
+
+  // Frontend sends "description" (maps to evidenceUrl/description)
+  @IsString()
+  @IsOptional()
+  description?: string;
 
   @IsEnum(ViolationType)
-  violationType: ViolationType;
+  @IsOptional()
+  violationType?: ViolationType;
 
   @IsString()
   @IsOptional()

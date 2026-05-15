@@ -333,6 +333,10 @@ export class RoomService {
         if (attempt.submittedAt) throw new Error('ATTEMPT_ALREADY_SUBMITTED');
         correctCount = attempt.correctCount;
 
+        // Validate required fields for answer submission
+        if (!dto.questionId) throw new Error('OPTION_NOT_FOUND');
+        if (!dto.optionId) throw new Error('OPTION_NOT_FOUND');
+
         const option = await tx.option.findUnique({
           where: { id: dto.optionId },
           select: { isCorrect: true },
@@ -370,10 +374,10 @@ export class RoomService {
 
   async studentSubmit(studentId: number, dto: StudentAnswerDto) {
     try {
-      await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         const room = await tx.room.findUnique({
           where: { id: dto.roomId },
-          select: { status: true },
+          select: { status: true, examId: true },
         });
         if (!room) throw new Error('ROOM_NOT_FOUND');
         if ((room.status as RoomStatusEnum) !== RoomStatusEnum.ACTIVE) {
@@ -382,7 +386,7 @@ export class RoomService {
 
         const attempt = await tx.attempt.findFirst({
           where: { roomId: dto.roomId, studentId },
-          select: { id: true, submittedAt: true },
+          select: { id: true, submittedAt: true, correctCount: true },
         });
 
         if (!attempt) throw new Error('ATTEMPT_NOT_FOUND');
@@ -392,12 +396,22 @@ export class RoomService {
           where: { id: attempt.id },
           data: { submittedAt: new Date() },
         });
+
+        // Count total questions in the exam for scoring
+        const totalQuestions = await tx.question.count({
+          where: { examId: room.examId },
+        });
+
+        return {
+          correctCount: attempt.correctCount,
+          totalQuestions,
+        };
       });
+
+      return Result.ok('Attempt submitted', result);
     } catch (e) {
       return this.handleError(e as Error);
     }
-
-    return Result.ok('Attempt submitted', {});
   }
 
   async findRoomByCode(code: string) {
@@ -405,6 +419,33 @@ export class RoomService {
       where: { code: { equals: code, mode: 'insensitive' } },
       select: { id: true },
     });
+  }
+
+  async createAttempt(
+    studentId: number,
+    roomId: number,
+  ): Promise<{ id: number; correctCount: number } | null> {
+    // Check if attempt already exists
+    const existing = await this.prisma.attempt.findFirst({
+      where: { roomId, studentId },
+      select: { id: true, correctCount: true },
+    });
+    if (existing) return existing;
+
+    // Create new attempt
+    try {
+      const attempt = await this.prisma.attempt.create({
+        data: { roomId, studentId, correctCount: 0 },
+        select: { id: true, correctCount: true },
+      });
+      return attempt;
+    } catch {
+      // Race condition: attempt was created concurrently
+      return this.prisma.attempt.findFirst({
+        where: { roomId, studentId },
+        select: { id: true, correctCount: true },
+      });
+    }
   }
 
   async findRoomInfoByCode(code: string) {

@@ -52,7 +52,7 @@ export class ViolationService {
       data: {
         attemptId,
         studentId,
-        violationType: dto.violationType,
+        violationType: dto.violationType!,
         evidenceUrl: dto.evidenceUrl,
       },
       select: {

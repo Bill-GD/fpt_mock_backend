@@ -7,11 +7,13 @@ export class StudentAnswerDto {
 
   @IsNumber()
   @IsPositive()
-  examId: number;
+  @IsOptional()
+  examId?: number;
 
   @IsNumber()
   @IsPositive()
-  questionId: number;
+  @IsOptional()
+  questionId?: number;
 
   @IsNumber()
   @IsOptional()
